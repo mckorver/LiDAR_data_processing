@@ -129,7 +129,7 @@ for n in range(len(phases)):
     W[np.isnan(W)]=0
     W=cv2.filter2D(W,-1,kernel)
     smooth=V/W
-    smooth[np.isnan(SD)]="nan"
+    smooth[np.isnan(SD)]=np.nan
     #plt.figure(dpi=1000)
     #plt.imshow(smooth,vmin=0,vmax=5)
     #plt.colorbar()
