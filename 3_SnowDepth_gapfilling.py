@@ -3,18 +3,18 @@
 # Gap-filled snowdepth maps for each phase
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2025' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 2 # Enter Bare Earth version number.
+watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2024' # Enter year of interest
+phases=['P3'] # Enter survey phases ('P1','P2', etc.)
+BEversion = 6 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 veg_correction='vegcorrected' # Enter 'vegcorrected' if you want to use the vegetation corected version and '' if not.
 lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-glaciers = 'Y' # Enter 'Y' if the watershed has glaciers, 'N' if not
-frac = 0.5 # The fraction of assumed lake snowdepth compared to surrounding land
+glaciers = 'N' # Enter 'Y' if the watershed has glaciers, 'N' if not
+frac = 0.3 # The fraction of assumed lake snowdepth compared to surrounding land
 
 # Import packages
 import pyrsgis
@@ -114,7 +114,7 @@ for n in range(len(phases)):
 
     if lakemodel == 'N':
         # Remove lakes
-        [R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/'+str(subbasin)+'_lakes_'+str(resolution)+'m.tif', bands='all'))
+        [R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/'+str(watershed)+'_lakes_'+str(resolution)+'m.tif', bands='all'))
         lakemask[lakemask==0]= np.nan
         i=np.where(lakemask==1)
         filled[i]= np.nan

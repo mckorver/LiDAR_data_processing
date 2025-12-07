@@ -6,16 +6,16 @@
 #This script performs validation checks 
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin = 'CRU'
+watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin = 'MV'
 year='2025' # Enter year of interest
 phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-glaciermodel = 'Y' # Enter 'Y' or 'N' for including a SWE model for glaciers
-date = '20251016' #Enter date of today
+glaciermodel = 'N' # Enter 'Y' or 'N' for including a SWE model for glaciers
+date = '20251202' #Enter date of today
 
 import rasterio
 import os

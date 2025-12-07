@@ -6,15 +6,14 @@
 #This script performs validation checks 
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin = 'CRU' 
+watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin = 'MV' 
 year='2025' # Enter year of interest
 phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-date = '20251016' #Enter date of today
 
 import rasterio
 import os
@@ -194,31 +193,21 @@ for n in range(len(phases)):
 # Output ------------------------------------------------------------------------------------------------------------------
 # Export difference statistics
 # For the entire watershed
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Bias_analysis/'+str(watershed)+'/'+str(year)+'/Difference_statistics/')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Bias_analysis/'+str(watershed)+'/'+str(year)+'/')
 Density_field=pd.DataFrame(list(zip(phases,Density_meandiff,Density_sddiff,Density_rmsediff)),columns=['survey','Density_mean_diff_g*cm^-3','Density_sd_diff_g*cm^-3','Density_rmse_diff_g*cm^-3'])
-Density_field.to_csv('Field_differences_Density.csv', index=False)
+Density_field.to_csv(str(watershed)+'_field_validation_Density.csv', index=False)
 
 # By plot
 y = []
 for n in range(len(phases)):
-    surveys=np.repeat(phases,len(Density_plot_names[n]))
-    x=pd.DataFrame(list(zip(surveys,Density_plot_names[n],Density_plot_meandiffs[n].flatten(),Density_plot_sddiffs[n].flatten())),columns=['survey','Plot_id','Density_mean_diff_g*cm^-3','Density_sd_diff_g*cm^-3'])
+    surveys=np.repeat(phases[n],len(Density_plot_names[n]))
+    x=pd.DataFrame(list(zip(surveys,Density_plot_names[n],FieldDensity_plot_mean[n],FieldDensity_plot_sd[n],LidarDensity_plot_mean[n],LidarDensity_plot_sd[n],Density_plot_meandiffs[n].flatten(),Density_plot_sddiffs[n].flatten())),columns=['survey','Plot_id','Field_density_mean','Field_density_sd','Lidar_density_mean','Lidar_density_sd','Density_mean_diff_g*cm^-3','Density_sd_diff_g*cm^-3'])
     y.append(x)
 Density_plot=pd.concat(y)
-Density_plot.to_csv('Plot_differences_Density.csv', index=False)
+Density_plot.to_csv(str(watershed)+'_field_validation_by_plot_Density.csv', index=False)
 
-# Export plot averaged statistics
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Bias_analysis/'+str(watershed)+'/'+str(year)+'/Plot_averaged/')
-y = []
-for n in range(len(phases)):
-    surveys=np.repeat(phases[n],len(FieldDensity_plot_names[n]))
-    x=pd.DataFrame(list(zip(surveys,FieldDensity_plot_names[n],FieldDensity_plot_mean[n],FieldDensity_plot_sd[n],LidarDensity_plot_mean[n],LidarDensity_plot_sd[n])),columns=['survey','Plot_id','Field_density_mean','Field_density_sd','Lidar_density_mean','Lidar_density_sd'])
-    y.append(x)
-FieldDensity = pd.concat(y)
-FieldDensity.to_csv('Plot_comparisons_Density.csv', index=False)
-
-FieldDensity = FieldDensity[FieldDensity['Field_density_mean']>0]
-g = sns.FacetGrid(FieldDensity, col='survey',hue='Plot_id')
+Density_plot = Density_plot[Density_plot['Field_density_mean'] > 0]
+g = sns.FacetGrid(Density_plot, col='survey',hue='Plot_id')
 def plot(x, y, xerr, yerr, **kwargs):
     plt.errorbar(x, y, xerr=xerr, yerr=yerr, fmt = 'o', **kwargs)
     plt.grid(True)
@@ -233,6 +222,6 @@ g.set_xlabels("Mean Density (Field) [g*cm^-3]")
 g.set_ylabels("Mean Density (LiDAR) [g*cm^-3]")
 g.add_legend(title="Plot ID")
 plt.savefig(
-    f"{drive}:/LiDAR_data_processing/{lidar}/Final_products/Figures/{watershed}/{year}/{date}/"
+    f"{drive}:/LiDAR_data_processing/{lidar}/Bias_analysis/{watershed}/{year}/"
     f"Plot_density_validation.png")
 plt.close()
