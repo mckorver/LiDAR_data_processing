@@ -6,16 +6,16 @@
 # 'ENG','Arrowsmith','Fishtail','Cokely'
 # 'CRU','Comox','Eric','Moat','Rees','Residual'
 
-watershed='CRU' # ENG, MV, TSI, CRU
-subbasin=['CRU','Comox','Eric','Moat','Rees','Residual'] #Enter subbasin of interest. Repeat watershed acronym if running entire watershed
-year='2025'
+watershed='MV' # ENG, MV, TSI, CRU
+subbasin=['MV'] #Enter subbasin of interest. Repeat watershed acronym if running entire watershed
+year='2024'
 phases=['P1','P2','P3'] # Survey number
-BEversion = 2 # Bare Earth version number
+BEversion = 6 # Bare Earth version number
 resolution = 1 # Raster resolution in meters
 resolution2 = 2 # Raster resolution in meters you want to downscale to
 drive = 'K' # File path drive letter
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
+lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
 lakes = '' # Enter '_no_lakes' for watershed mask with lakes cut out or '' for including lakes
 glaciers = '' # Enter '_no_glaciers' for watershed mask with glaciers cut out or '' for including glaciers
 
@@ -58,17 +58,18 @@ for m in range(len(inputs)):
     pyrsgis.raster.export(y, R, filename=str(watershed)+str(inputs[m])+'_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif')
 
 # Downsample canopy model input data to 2 m
-inputs = ['_CC','_CH'] # Input model data.
+inputs = ['_CC','_CH', '_CD'] # Input model data.
 for m in range(len(inputs)):
-    os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/')
-    cmd='gdalwarp -overwrite -tr 2.0 2.0 -r average -dstnodata "-9999" -of GTiff '+str(watershed)+str(inputs[m])+'_'+str(resolution)+'m.tif '+str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/'+str(watershed)+str(inputs[m])+'_'+str(resolution2)+'m.tif'
+    os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/resolution_'+str(resolution)+'m/')
+    cmd='gdalwarp -overwrite -tr 2.0 2.0 -r average -dstnodata "-9999" -of GTiff '+str(watershed)+str(inputs[m])+'_'+str(resolution)+'m.tif '+str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/resolution_'+str(resolution2)+'m/'+str(watershed)+str(inputs[m])+'_'+str(resolution2)+'m.tif'
     subprocess.run([x for x in cmd.split(" ") if x != ""])
+    os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/resolution_'+str(resolution2)+'m/')
     [R,y]=np.array(pyrsgis.raster.read(str(watershed)+str(inputs[m])+'_'+str(resolution2)+'m.tif', bands='all'))
     pyrsgis.raster.export(y, R, filename=str(watershed)+str(inputs[m])+'_'+str(resolution2)+'m.tif')
 
 # Downsample lakes and glaciers to 2 m
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/')
-cmd='gdalwarp -overwrite -tr 2.0 2.0 -r near -dstnodata "-9999" -of GTiff '+str(watershed)+'_lakes_glaciers_'+str(resolution)+'m.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/'+str(watershed)+'_lakes_glaciers_'+str(resolution2)+'m.tif'
+cmd='gdalwarp -overwrite -tr 2.0 2.0 -r near -dstnodata "-9999" -of GTiff '+str(watershed)+'_lakes_'+str(resolution)+'m.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/'+str(watershed)+'_lakes_'+str(resolution2)+'m.tif'
 subprocess.run([x for x in cmd.split(" ") if x != ""])
 
 # Downsample Watershed Mask to 2 m

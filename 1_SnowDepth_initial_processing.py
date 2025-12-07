@@ -4,11 +4,11 @@
 # bias analysis (histogram, mean, median)
 #%%
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2025' # Enter year of interest
+watershed='' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2024' # Enter year of interest
 phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 2 # Enter Bare Earth version number.
+BEversion = 6 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
@@ -16,8 +16,10 @@ lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by dron
 # Import package
 import pyrsgis
 import numpy as np
+from scipy import stats
 import os
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 from pathlib import Path
 
@@ -29,7 +31,7 @@ for n in range(len(phases)):
     SSEs.append(x)
 del x,n
 
-# Import bare earth
+# Import bare earth, slope and aspect
 [R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m/'+str(subbasin)+'_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif', bands='all'))
 
 # Import roads
@@ -59,11 +61,11 @@ ROADS[ROADS < 0] = np.nan    # Set negative values to NaN
 for n in range(len(phases)):
     x=SSEs[n]
     i=np.where(x<-100)
-    x[i]='nan'
+    x[i]=np.nan
     SSEs[n]=x
     x=SFAs[n]
-    i=np.where(x<=0)
-    x[i]='nan'
+    i=np.where(x<0)
+    x[i]=np.nan
     SFAs[n]=x
 del x,n
 
@@ -72,38 +74,78 @@ SDs=[]
 for n in range(len(phases)):
     x=SSEs[n]-BE
     SDs.append(x)
-del x,n,SSEs
+del x,n
 
-# Extract snow free roads from snow surface elevation maps
+# Extract snow free roads from snow depth maps
 SDs_SFRs=[]
 for n in range(len(phases)):
     x=SDs[n]*SFAs[n]*ROADS
     nans=np.where(x==0)
-    x[nans]='nan'
+    x[nans]=np.nan
+    std3=np.nanstd(x)*3
+    x = x[x>-std3]
+    x = x[x<std3]
     SDs_SFRs.append(x)
-del x,ROADS,SFAs,n
+del x,n
 
 # Calculate biases on snow free roads
 SFR_biases_mean=[]
 SFR_biases_median=[]
+SFR_biases_std=[]
 for n in range(len(SDs_SFRs)):
     x=np.nanmean(SDs_SFRs[n])
     y=np.nanmedian(SDs_SFRs[n])
+    z=np.nanstd(SDs_SFRs[n])
     SFR_biases_mean.append(x)
     SFR_biases_median.append(y)
-del x,y,n   
+    SFR_biases_std.append(z)
+del x,y,z,n
+
+# Extract snow free roads from BE, Slope, Aspect maps
+BE_road=[]
+SSE_road=[]
+for n in range(len(phases)):
+    x=BE*SFAs[n]*ROADS
+    a=SSEs[n]*SFAs[n]*ROADS
+    nansx=np.where(x==0)
+    x[nansx]=np.nan
+    std3=np.nanstd(x)*3
+    x = x[x>-std3]
+    x = x[x<std3]
+    nansa=np.where(a==0)
+    a[nansa]=np.nan
+    std3=np.nanstd(a)*3
+    a = a[a>-std3]
+    a = a[a<std3]
+    BE_road.append(x)
+    SSE_road.append(a)
+del x,a,nansx,nansa,n
+
+# Perform a two-sample unpaired student t-test to see if the means of SSE_road and BE_road are different
+Tstat=[]
+pvalue=[]
+for n in range(len(phases)):
+    sample1 = SSE_road[n].flatten()
+    sample1 = sample1[~np.isnan(sample1)]
+    sample2 = BE_road[n].flatten()
+    sample2 = sample2[~np.isnan(sample2)]
+    t_statistic, p_value = stats.ttest_ind(sample1,sample2)
+    Tstat.append(t_statistic)
+    pvalue.append(f'{p_value:.4f}')
 
 # Output -----------------------------------------------------------------
 # Plot histogram of snow depth values along snow free roads
-#counts=[]
 for n in range(len(phases)):
     x = SDs_SFRs[n]
     x = x[~np.isnan(x)]          # remove NaNs
     counts = x
     # bins of width 0.05 from -0.5 to 0.5
-    bins = np.arange(-0.5, 0.5 + 0.05, 0.05)
+    bins = np.arange(-0.5, 0.5 + 0.05, 0.01)
     plt.hist(counts, bins, label=phases[n], edgecolor='black', linewidth=0.5)
-    plt.axvline(0, color='k', linestyle='--', linewidth=1)
+    plt.axvline(0, color='k', linestyle='-', linewidth=1.5)
+    plt.axvline(SFR_biases_mean[n], color='r', linestyle='-', linewidth=1.5)
+    plt.axvline(SFR_biases_mean[n]-SFR_biases_std[n], color='r', linestyle='--', linewidth=1)
+    plt.axvline(SFR_biases_mean[n]+SFR_biases_std[n], color='r', linestyle='--', linewidth=1)
     plt.legend(loc='upper right')
     plt.ylabel('Count')
     plt.xlabel('Snow depths (m) along snow free roads')
@@ -112,10 +154,11 @@ for n in range(len(phases)):
         f"Snow_free_road_histogram_{subbasin}_{year}_{phases[n]}.png")
     plt.close()
     del x, counts, bins
+
 # Export biases into csv file
 for n in range(len(phases)):
-    SFR_biases=np.array([phases[n],SFR_biases_mean[n],SFR_biases_median[n]]).reshape(1,3)
-    biases_reformatted=pd.DataFrame(data=SFR_biases,columns=['Survey','Mean_bias','Median_bias'])
+    SFR_biases=np.array([phases[n],SFR_biases_mean[n],SFR_biases_median[n],SFR_biases_std[n],pvalue[n]]).reshape(1,5)
+    biases_reformatted=pd.DataFrame(data=SFR_biases,columns=['Survey','Mean_bias','Median_bias','Std_bias','p_value'])
     biases_reformatted.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Bias_analysis/'+str(watershed)+'/'+str(year)+'/Snow_free_road_biases_'+str(subbasin)+'_'+str(year)+'_'+str(phases[n])+'.csv', index=False)
 
 # Save snow depth maps

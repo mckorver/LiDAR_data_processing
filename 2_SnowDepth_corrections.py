@@ -8,18 +8,18 @@
 # processed snowdepths (capped, clipped, and vegetation corrected)
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2025' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 2 # Enter Bare Earth version number.
+watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2024' # Enter year of interest
+phases=['P2'] # Enter survey phases ('P1','P2', etc.)
+BEversion = 6 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-glaciers = 'Y' # Enter 'Y' if the watershed has glaciers, 'N' if not
+glaciers = 'N' # Enter 'Y' if the watershed has glaciers, 'N' if not
 
-bias_correction=[0.06,0.12,0.07] # For every phase: set bias correction (in metres)
-avalanche_threshold=[750,750,750] # For every phase: set highest elevation below which no avalanches are visible (in metres)
+bias_correction=[0,0,0] # For every phase: set bias correction (in metres)
+avalanche_threshold=[700,700,700] # For every phase: set highest elevation below which no avalanches are visible (in metres)
 upper_detection_threshold=[4,4,4] # For every phase: set upper threshold of snow depth anomalies to be removed (in metres)
 lower_detection_threshold=[-2,-2,-2] # For every phase: set lower threshold of snow depth anomalies to be removed (in metres)
 kernel_size=[200,200,200] # For every phase: set kernel size for filter used to detect anomalies (in pixels)
@@ -37,7 +37,7 @@ from pathlib import Path
 # Import provisional snow depths
 SDs=[]
 for n in range(len(phases)):
-    [R,SD]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution)+'m/Provisional_SD_'+str(subbasin)+'_'+str(year)+'_'+str(phases[n])+'_'+str(resolution)+'m.tif', bands='all'))
+    [R,SD]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution)+'m/Provisional_SD_'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_'+str(resolution)+'m.tif', bands='all'))
     SDs.append(SD)
 
 # Add or subtract layer of snow to entire extent to account for bias
@@ -60,12 +60,12 @@ del x,n
 
 # Import lakes (and glaciers) mask
 if glaciers == 'Y':
-    [R,lakes_glaciers]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/'+str(subbasin)+'_lakes_glaciers_'+str(resolution)+'m.tif', bands='all'))
+    [R,lakes_glaciers]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/'+str(watershed)+'_lakes_glaciers_'+str(resolution)+'m.tif', bands='all'))
 elif glaciers == 'N':
-    [R,lakes_glaciers]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/'+str(subbasin)+'_lakes_'+str(resolution)+'m.tif', bands='all'))
+    [R,lakes_glaciers]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/'+str(watershed)+'_lakes_'+str(resolution)+'m.tif', bands='all'))
 
 # Import bare earth and create avalanche mask
-[R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m/'+str(subbasin)+'_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif', bands='all'))
+[R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m/'+str(watershed)+'_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif', bands='all'))
 avalanche_elevs=[]
 for n in range(len(phases)):
     x=np.where(BE>avalanche_threshold[n])
@@ -129,7 +129,7 @@ for n in range(len(phases)):
     W[np.isnan(W)]=0
     W=cv2.filter2D(W,-1,kernel)
     smooth=V/W
-    smooth[np.isnan(SD)]=np.nan
+    smooth[np.isnan(SD)]="nan"
     #plt.figure(dpi=1000)
     #plt.imshow(smooth,vmin=0,vmax=5)
     #plt.colorbar()

@@ -5,15 +5,15 @@
 # csv files of Xt, Snowfall, and positive degree days by elevation
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2025' # Enter year of interest
+watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2024' # Enter year of interest
 phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 2 # Enter Bare Earth version number.
+BEversion = 6 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-rain_snow_threshold=0.90 # ENTER RAIN-SNOW THRESHOLD (according to Jennings et al., 2018: 0.97 for Metro Vancouver, 0.98 for Tsitika, 0.90 for Cruikshank, 0.91 for Englishman)
+rain_snow_threshold=0.97 # ENTER RAIN-SNOW THRESHOLD (according to Jennings et al., 2018: 0.97 for Metro Vancouver, 0.98 for Tsitika, 0.90 for Cruikshank, 0.91 for Englishman)
 
 import os
 import pandas as pd
@@ -54,36 +54,25 @@ DateTime=np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv',use
 # QAQC of total precipitation data -------------------------------------------------------------------
 # Apply QAQC filters to total precip data
 precip_pipe=precip_pipe.astype('float64')
-#plt.plot(precip_pipe)
-#for n in range(1,len(precip_pipe)): # Remove pipe drains
-#    x=precip_pipe[n]-precip_pipe[n-1]
-#    if x<-10:
-#        precip_pipe[n]='nan'
-#plt.plot(precip_pipe)
-#for n in range(1,len(precip_pipe)-1): # Remove erroneously high spikes
-#    x=precip_pipe[n+1]-precip_pipe[n-1]
-#    if x>30:
-#        for m in range(-20,20):
-#            precip_pipe[n+m]='nan'
-#plt.plot(precip_pipe)
-#for n in range(1,len(precip_pipe)): # Remove decreases (precip is cumulative so should never decrease)
-#    x=precip_pipe[n]-precip_pipe[n-1]
-#    if x<0:
-#        precip_pipe[n]=precip_pipe[n-1]
-#plt.plot(precip_pipe)
-#plt.show()
-#del n,x
+for n in range(1,len(precip_pipe)): # Remove pipe drains
+    x=precip_pipe[n]-precip_pipe[n-1]
+    if x<-10:
+        precip_pipe[n]=np.nan
+for n in range(1,len(precip_pipe)-1): # Remove erroneously high spikes
+    x=precip_pipe[n+1]-precip_pipe[n-1]
+    if x>20:
+        for m in range(-20,20):
+            precip_pipe[n+m]=np.nan
+for n in range(1,len(precip_pipe)): # Remove decreases (precip is cumulative so should never decrease)
+    x=precip_pipe[n]-precip_pipe[n-1]
+    if x<0:
+        precip_pipe[n]=precip_pipe[n-1]
+del n,x
 
-#plt.close()
 df=pd.DataFrame(precip_pipe) 
 df2=np.array(df)
-#df2=np.array(df.rolling(96,center=True).mean()) # Apply 96-hour moving average (based on data from 48 hours either side)
-#plt.plot(df2)       
-#plt.show()
-#del df,precip_pipe 
 
 # Calculate hourly precipitation
-#plt.close()
 Precip=[]
 for n in range(1,len(df2)):
     x=df2[n]-df2[n-1]
@@ -92,7 +81,9 @@ Precip=np.array(Precip)
 Precip=np.insert(Precip,0,0)
 nans=np.argwhere(np.isnan(Precip))
 Precip[nans]=0
-Precip[Precip<0]=0        
+Precip[Precip<0]=0
+plt.plot(Precip)
+plt.show() 
 del x,n,df2,df,nans,precip_pipe
 
 # Calculations -----------------------------------------------------------------------------

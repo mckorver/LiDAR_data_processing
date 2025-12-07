@@ -6,16 +6,16 @@
 
 # ACTION REQUIRED BELOW
 # To run this code, use a conda environment configured for rasterio
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin= ['CRU','Comox','Eric','Moat','Rees','Residual'] #Enter prefixes for all subbasins, including the watershed.
-year='2025' # ENTER YEAR OF INTEREST
+watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin= ['MV','SEY','CAP','BurwellLake','LochLomond','PalisadeLake','UpperSeymour'] #Enter prefixes for all subbasins, including the watershed.
+year='2024' # ENTER YEAR OF INTEREST
 phases=['P1','P2','P3'] # Enter survey numbers ,'P2','P3','P4','P5' NOTE run all surveys of a year simultaneously
 resolution=2
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-date='20251016' #Enter date of today
-lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-glaciermodel = 'N' # Enter 'Y' or 'N' for including a SWE model for glaciers
+date='20251205' #Enter date of today
+lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
+glaciermodel = 'NA' # Enter 'Y' or 'N' for including a SWE model for glaciers, or 'NA' if the watershed does not have glaciers
 
 import pandas as pd
 import glob
@@ -29,9 +29,9 @@ import seaborn as sns
 WS_areas=[]
 for a in range(len(subbasin)):
     # Import watershed mask (without lakes or glaciers)
-    if lakemodel == 'Y' and glaciermodel == 'Y':
+    if lakemodel == 'Y' and (glaciermodel == 'Y' or glaciermodel =='NA'):
         [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution)+'m/'+str(subbasin[a])+'_watershed_'+str(resolution)+'m.tif'))
-    elif lakemodel == 'N' and glaciermodel == 'Y':
+    elif lakemodel == 'N' and (glaciermodel == 'Y' or glaciermodel =='NA'):
         [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution)+'m/'+str(subbasin[a])+'_watershed_no_lakes_'+str(resolution)+'m.tif'))
     elif lakemodel == 'N' and glaciermodel == 'N':
         [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution)+'m/'+str(subbasin[a])+'_watershed_no_lakes_no_glaciers_'+str(resolution)+'m.tif'))
@@ -40,7 +40,7 @@ for a in range(len(subbasin)):
     area=np.nansum(WS)*resolution*resolution
     WS_areas.append(area)
 WS_areas=pd.DataFrame(list(zip(subbasin,WS_areas)),columns=['watershed','WS_area_m2'])
-WS_areas.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(year)+'/'+str(date)+'/'+str(watershed)+'_WS_areas_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv',index=False)
+WS_areas.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(date)+'/'+str(watershed)+'_WS_areas_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv',index=False)
 
 # Create a summary table
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution)+'m/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'/')
@@ -80,7 +80,7 @@ cols = df1.columns.tolist()
 cols = cols[-1:] + cols[:-1]
 cols = cols[-1:] + cols[:-1]
 sum_table = df1[cols]
-sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(year)+'/'+str(date)+'/Summary_table_'+str(year)+'_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv',index=False)
+sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(date)+'/Summary_table_'+str(year)+'_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv',index=False)
 del df1,cols
 
 # Create an elevation banded summary table
@@ -108,7 +108,7 @@ for a in range(len(subbasin)):
         y = df1[df1['Survey']==str(phases[n])]
         x['watershed'] = subbasin[a]
         x['date'] = y.iloc[0]['date']
-        x.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(year)+'/'+str(date)+'/Elevation_tables/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'/Elevation_table_'+str(subbasin[a])+'_'+str(year)+'_'+str(phases[n])+'.csv')
+        x.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(date)+'/Elevation_tables/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'/Elevation_table_'+str(subbasin[a])+'_'+str(year)+'_'+str(phases[n])+'.csv')
 
 # Update the 'Yearly_comparison' csv
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/')
@@ -124,27 +124,11 @@ df4 = pd.merge(df2,df3,how='right',on=['Survey'])
 df4 = df4[['watershed','year','Survey','date','date_figure','Total_SWV_m3','Absolute_total_SWV_errors_m3','Mean_SWE_mm','Absolute_mean_SWE_error']]
 
 df = pd.concat([df1,df4])
-df.to_csv(str(watershed)+'/Yearly_comparison.csv',index=False)
+df.to_csv(str(watershed)+'/Yearly_comparison_new.csv',index=False)
 del df1,df2,df3,df4
+
 
 ### PLOTS -------------------------------------------------------------------------
 
 
 
-
-
-### RUN THIS SECTION WHEN ALL YEARS WERE RUN
-# Create Table for Yearly Comparison Figure
-yearly=pd.DataFrame()
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/')
-df1 = pd.read_csv('Survey_dates_for_plotting.csv')
-df1 = df1[df1['watershed']==str(watershed)].set_index(['Survey','year'])
-df1 = df1.drop(columns='watershed')
-files1=glob.glob(str(watershed)+'/'+str(date)+'/Summary_table_**.csv')
-df2=pd.DataFrame()
-for n in files1:
-    x = pd.read_csv(n)
-    df2=df2.append(x)
-df2 = df2.set_index(['Survey','year'])
-yearly = df1.join(df2[['watershed','Total_SWV_m3','Absolute_total_SWV_errors_m3','Mean_SWE_mm','Absolute_mean_SWE_error']], how='outer')
-yearly.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(date)+'/Yearly_comparison_figure.csv')

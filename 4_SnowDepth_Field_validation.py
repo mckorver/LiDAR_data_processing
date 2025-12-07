@@ -6,16 +6,16 @@
 #This script performs validation checks 
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin = 'CRU' 
-year='2025' # Enter year of interest
+watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin = 'MV' 
+year='2024' # Enter year of interest
 phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 veg_correction='vegcorrected' # Enter 'vegcorrected' if you want to use the vegetation corected version and '' if not.
-lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-date = '20251016' #Enter date of today
+lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
+date = '20251205' #Enter date of today
 
 import rasterio
 import os
@@ -201,30 +201,20 @@ for n in range(len(phases)):
 # Output ------------------------------------------------------------------------------------------------------------------
 # Export difference statistics
 # For the entire watershed
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Bias_analysis/'+str(watershed)+'/'+str(year)+'/Difference_statistics/')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Bias_analysis/'+str(watershed)+'/'+str(year)+'/')
 Depth_field=pd.DataFrame(list(zip(phases,Depth_meandiff,Depth_sddiff,Depth_rmsediff)),columns=['survey','Depth_mean_diff_m','Depth_sd_diff_m','Depth_rmse_diff_m'])
-Depth_field.to_csv('Field_differences_Depth.csv', index=False)
+Depth_field.to_csv(str(watershed)+'_field_validation_Depth.csv', index=False)
 
 # By plot
 y = []
 for n in range(len(phases)):
     surveys=np.repeat(phases[n],len(Depth_plot_names[n]))
-    x=pd.DataFrame(list(zip(surveys,Depth_plot_names[n],Depth_plot_meandiffs[n].flatten(),Depth_plot_sddiffs[n].flatten())),columns=['survey','Plot_id','Depth_mean_diff_m','Depth_sd_diff_m'])
+    x=pd.DataFrame(list(zip(surveys,Depth_plot_names[n],FieldDepth_plot_mean[n],FieldDepth_plot_sd[n],LidarDepth_plot_mean[n],LidarDepth_plot_sd[n],Depth_plot_meandiffs[n].flatten(),Depth_plot_sddiffs[n].flatten())),columns=['survey','Plot_id','Field_Depth_mean','Field_Depth_sd','Lidar_Depth_mean','Lidar_Depth_sd','Depth_mean_diff_m','Depth_sd_diff_m'])
     y.append(x)
 Depth_plot = pd.concat(y)
-Depth_plot.to_csv('Plot_differences_Depth.csv', index=False)
-
-# Export plot averaged statistics
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Bias_analysis/'+str(watershed)+'/'+str(year)+'/Plot_averaged/')
-y = []
-for n in range(len(phases)):
-    surveys=np.repeat(phases[n],len(FieldDepth_plot_names[n]))
-    x=pd.DataFrame(list(zip(surveys,FieldDepth_plot_names[n],FieldDepth_plot_mean[n],FieldDepth_plot_sd[n],LidarDepth_plot_mean[n],LidarDepth_plot_sd[n])),columns=['survey','Plot_id','Field_Depth_mean','Field_Depth_sd','Lidar_Depth_mean','Lidar_Depth_sd'])
-    y.append(x)
-FieldDepth = pd.concat(y)
-FieldDepth.to_csv('Plot_comparisons_Depth.csv', index=False)
+Depth_plot.to_csv(str(watershed)+'_field_validation_by_plot_Depth.csv', index=False)
     
-g = sns.FacetGrid(FieldDepth, col='survey',hue='Plot_id')
+g = sns.FacetGrid(Depth_plot, col='survey',hue='Plot_id')
 def plot(x, y, xerr, yerr, **kwargs):
     plt.errorbar(x, y, xerr=xerr, yerr=yerr, fmt = 'o', **kwargs)
     plt.grid(True)
