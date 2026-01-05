@@ -15,7 +15,7 @@ resolution = 1 # Raster resolution in meters
 resolution2 = 2 # Raster resolution in meters you want to downscale to
 drive = 'K' # File path drive letter
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
+lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
 lakes = '' # Enter '_no_lakes' for watershed mask with lakes cut out or '' for including lakes
 glaciers = '' # Enter '_no_glaciers' for watershed mask with glaciers cut out or '' for including glaciers
 
