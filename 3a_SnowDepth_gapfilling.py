@@ -33,12 +33,17 @@ nans=np.where(BE<0)
 BE[nans]=np.nan
 del nans
 
-# Import watershed (or subbasin) mask.
+# Import watershed (or subbasin) mask without lakes and glaciers.
 if glaciers == 'Y':
-    [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution)+'m/'+str(subbasin)+'_watershed_no_lakes_no_glaciers_'+str(resolution)+'m.tif'))
+    [R,WS_no_lakes]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution)+'m/'+str(subbasin)+'_watershed_no_lakes_no_glaciers_'+str(resolution)+'m.tif'))
 else:
-    [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution)+'m/'+str(subbasin)+'_watershed_no_lakes_'+str(resolution)+'m.tif'))
-nans=np.where(WS<=0)
+    [R,WS_no_lakes]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution)+'m/'+str(subbasin)+'_watershed_no_lakes_'+str(resolution)+'m.tif'))
+nans=np.where(WS_no_lakes<=0)
+WS_no_lakes[nans]=np.nan
+
+# Import watershed mask
+[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution)+'m/'+str(watershed)+'_watershed_'+str(resolution)+'m.tif'))
+nans=np.where(WS<1)
 WS[nans]=np.nan
 
 # Read lakes vector dataset and create 100m buffer
@@ -96,7 +101,7 @@ for n in range(len(phases)):
     SD_out=np.reshape(land_flattened,(dims[0],dims[1]))
 
     # Determine areas where interpolation is required (i.e. within the boundary of the watershed, not in lakes or glaciers) and set these areas to 0 and everything else to 1
-    area_mask_flattened=np.ndarray.flatten(WS)
+    area_mask_flattened=np.ndarray.flatten(WS_no_lakes)
     SD_flattened=np.ndarray.flatten(SD_out)
     interpolation_areas=(SD_flattened/SD_flattened).astype('float64')
     a=np.ndarray.flatten(np.array(np.where(area_mask_flattened==1))).astype('float64')
@@ -106,7 +111,7 @@ for n in range(len(phases)):
     interpolation_areas[k]=0
     nans=np.argwhere(np.isnan(interpolation_areas))
     interpolation_areas[nans]=1
-    dims=np.shape(WS)
+    dims=np.shape(WS_no_lakes)
     interpolation_areas_2d=np.reshape(interpolation_areas,(dims[0],dims[1]))
     del a,b,k,nans,dims,SD_flattened,area_mask_flattened,interpolation_areas
     
@@ -118,6 +123,9 @@ for n in range(len(phases)):
         lakemask[lakemask==0]= np.nan
         i=np.where(lakemask==1)
         filled[i]= np.nan
+
+    # Cut map along watershed boundaries
+    filled = filled*WS
 
     # Output ---------------------------------------------------------------------------------------
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution)+'m')

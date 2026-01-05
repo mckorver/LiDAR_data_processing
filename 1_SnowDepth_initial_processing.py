@@ -4,9 +4,9 @@
 # bias analysis (histogram, mean, median)
 #%%
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
 subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2025' # Enter year of interest
+year='2024' # Enter year of interest
 phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
 BEversion = 2 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
