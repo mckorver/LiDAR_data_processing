@@ -6,13 +6,13 @@
 watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
 subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
 year='2024' # Enter year of interest
-phases=['P3'] # Enter survey phases ('P1','P2', etc.)
+phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
 BEversion = 6 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 veg_correction='vegcorrected' # Enter 'vegcorrected' if you want to use the vegetation corected version and '' if not.
-lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
+lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
 glaciers = 'N' # Enter 'Y' if the watershed has glaciers, 'N' if not
 frac = 0.3 # The fraction of assumed lake snowdepth compared to surrounding land
 

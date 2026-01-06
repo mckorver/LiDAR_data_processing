@@ -6,7 +6,7 @@
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
 watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
 subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2025' # Enter year of interest
+year='2024' # Enter year of interest
 phase='P3' # Enter survey phase. NOTE only one phase can be run at the time in this script
 BEversion = 6 # Enter Bare Earth version number
 resolution = 2 # Enter resolution in meters
@@ -154,9 +154,13 @@ del input_parameters
 
 # TEMPORARY adjust density values
 #os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Maps/SnowDepth/'+str(watershed)+'/'+str(year)+'/resolution_'+str(resolution)+'m/')
-#[R,SD]=np.array(pyrsgis.raster.read(str(subbasin)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'_filled.tif', bands='all'))
+#[R,SD]=np.array(pyrsgis.raster.read(str(subbasin)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))
 #x=SD
 #y=-0.0137*x+0.3327
+#y=np.ndarray.flatten(y)
+#z=np.ndarray.flatten(SFA)
+#nans=np.where(z==1)
+#y[nans]=np.nan
 #Simulated_density=y
 
 # Create mask for extent of snowdepth data

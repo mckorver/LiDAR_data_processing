@@ -15,7 +15,7 @@ drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 veg_correction='vegcorrected' # Enter 'vegcorrected' if you want to use the vegetation corected version and '' if not.
 lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-date = '20251205' #Enter date of today
+date = '20260106' #Enter date of today
 
 import rasterio
 import os
@@ -60,7 +60,7 @@ del x,y,n,plot_id,easting,northing,depth
 # Read gridded input datasets
 LidarDepths=[] #in m
 for n in range(len(phases)):
-    x=rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution)+'m/Provisional_SD_'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped'+'_'+str(veg_correction)+'_filled_lakemodel'+str(lakemodel)+'_'+str(resolution)+'m.tif')    
+    x=rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution)+'m/Provisional_SD_'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped'+'_'+str(veg_correction)+'_'+str(resolution)+'m.tif')    
     LidarDepths.append(x)
 del n,x
 
@@ -214,21 +214,29 @@ for n in range(len(phases)):
 Depth_plot = pd.concat(y)
 Depth_plot.to_csv(str(watershed)+'_field_validation_by_plot_Depth.csv', index=False)
     
+maxvalue=np.round(np.max(Depth_plot['Lidar_Depth_mean']) + 1,decimals = 1)
 g = sns.FacetGrid(Depth_plot, col='survey',hue='Plot_id')
 def plot(x, y, xerr, yerr, **kwargs):
     plt.errorbar(x, y, xerr=xerr, yerr=yerr, fmt = 'o', **kwargs)
     plt.grid(True)
 g = g.map(plot, 'Field_Depth_mean', 'Lidar_Depth_mean', 'Field_Depth_sd', 'Lidar_Depth_sd')
-def plot_one_to_one(x, y, **kwargs):
+def plot_one_to_one(**kwargs):
     ax = plt.gca()
     min_val = 0
-    max_val = 4.5
-    ax.plot([min_val, max_val], [min_val, max_val], linestyle='--',**kwargs)
-g = g.map(plot_one_to_one, 'Field_Depth_mean', 'Lidar_Depth_mean')
+    max_val = maxvalue
+    ax.plot([min_val, max_val], [min_val, max_val], linestyle='--', linewidth=1,**kwargs)
+g = g.map(plot_one_to_one, color = 'darkgrey')
+for ax, name in zip(g.axes.flat, Depth_field['survey']):
+    value = Depth_field[Depth_field['survey'] == name]['Depth_mean_diff_m'].iloc[0]
+    text_label = f"Mean diff:\n{value:.2f} m"
+    # Add text using ax.text(x_pos, y_pos, text)
+    # The coordinates (x, y) are in data units for that specific subplot
+    ax.text(0.5, maxvalue-1, text_label, fontsize=9, color='black', ha='left', va='center')
 g.set_xlabels("Mean Depth (Field) [m]")
 g.set_ylabels("Mean Depth (LiDAR) [m]")
+g.set(xlim=(0,maxvalue), ylim=(0,maxvalue),xticks=np.arange(0,maxvalue,1),yticks=np.arange(0,maxvalue,1))
 g.add_legend(title="Plot ID")
 plt.savefig(
-    f"{drive}:/LiDAR_data_processing/{lidar}/Final_products/Figures/{watershed}/{year}/{date}/"
+    f"{drive}:/LiDAR_data_processing/{lidar}/Bias_analysis/{watershed}/{year}/"
     f"Plot_depth_validation.png")
 plt.close()

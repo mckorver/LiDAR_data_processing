@@ -7,7 +7,7 @@
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
 watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='CAP' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
 year='2024' # Enter year of interest
 phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
 BEversion = 6 # Enter Bare Earth version number
@@ -91,8 +91,10 @@ Depth=[]
 for n in range(len(phases)):
     # Import snow depth data (in m) - clip to study area
     [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution)+'m/Provisional_SD_'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped'+'_'+str(veg_correction)+'_filled_lakemodel'+str(lakemodel)+'_'+str(resolution)+'m.tif', bands='all'))
-    nans=np.where(x<0)
-    x[nans]=np.nan #set all nans
+    nans1=np.where(x<0)
+    x[nans1]=np.nan
+    nans2=np.where(gapfill[n]==1) #remove any pixels that were added through linear interpolation along the border of the gapfill area
+    x[nans2]=np.nan
     x=x*WS #only keep pixels with value=1 in watershed mask
     Depth.append(x)
 del x,n
