@@ -6,10 +6,10 @@
 #This script performs validation checks 
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin = 'MV' 
+watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin = 'ENG' 
 year='2025' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
+phases=['P1','P2'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
@@ -207,6 +207,7 @@ Density_plot=pd.concat(y)
 Density_plot.to_csv(str(watershed)+'_field_validation_by_plot_Density.csv', index=False)
 
 Density_plot = Density_plot[Density_plot['Field_density_mean'] > 0]
+maxvalue=np.round(np.max(Density_plot['Lidar_density_mean']) + 1,decimals = 1)
 g = sns.FacetGrid(Density_plot, col='survey',hue='Plot_id')
 def plot(x, y, xerr, yerr, **kwargs):
     plt.errorbar(x, y, xerr=xerr, yerr=yerr, fmt = 'o', **kwargs)
@@ -214,10 +215,16 @@ def plot(x, y, xerr, yerr, **kwargs):
 g = g.map(plot, 'Field_density_mean', 'Lidar_density_mean', 'Field_density_sd', 'Lidar_density_sd')
 def plot_one_to_one(x, y, **kwargs):
     ax = plt.gca()
-    min_val = 0.3
+    min_val = 0.4
     max_val = 0.6
     ax.plot([min_val, max_val], [min_val, max_val], linestyle='--',**kwargs)
 g = g.map(plot_one_to_one, 'Field_density_mean', 'Lidar_density_mean')
+for ax, name in zip(g.axes.flat, Density_field['survey']):
+    value = Density_field[Density_field['survey'] == name]['Density_mean_diff_g*cm^-3'].iloc[0]
+    text_label = f"Mean diff:\n{value:.2f} g/cm3"
+    # Add text using ax.text(x_pos, y_pos, text)
+    # The coordinates (x, y) are in data units for that specific subplot
+    ax.text(0.43, maxvalue-0.9, text_label, fontsize=9, color='black', ha='left', va='center')
 g.set_xlabels("Mean Density (Field) [g*cm^-3]")
 g.set_ylabels("Mean Density (LiDAR) [g*cm^-3]")
 g.add_legend(title="Plot ID")

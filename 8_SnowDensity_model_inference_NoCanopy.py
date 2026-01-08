@@ -1,14 +1,15 @@
 # This script calculates snowdensity with a machine learning random forest model based on
-# in-situ snowdensity & snowdepth, elevation (snow-free bare earth), slope, northness, eastness, curvature, canopy cover, canopy height, and Xt. 
+# in-situ snowdensity & snowdepth, elevation (snow-free bare earth), slope, northness, eastness, curvature, and Xt.
+# NOTE that this script uses a model that does not take canopy cover and canopy height as input parameters 
 # This script outputs:
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2024' # Enter year of interest
-phase='P3' # Enter survey phase. NOTE only one phase can be run at the time in this script
-BEversion = 6 # Enter Bare Earth version number
+watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='ENG' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2025' # Enter year of interest
+phase='P2' # Enter survey phase. NOTE only one phase can be run at the time in this script
+BEversion = 1 # Enter Bare Earth version number
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
@@ -28,25 +29,20 @@ from pathlib import Path
 
 # Import data -----------------------------------------------------------------------------------------------------
 # Import snow density model
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Overall_density_model/All_parameters')
-rf = joblib.load('RF_density_model_'+str(watershed)+'.joblib')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Overall_density_model/No_Canopy')
+rf = joblib.load('RF_density_model_'+str(watershed)+'_NoCan.joblib')
 all_scalers=[]
-for n in range(1,10):
+for n in range(1,8):
     scaler = joblib.load('scaler'+str(n)+'.pkl')
     all_scalers.append(scaler)
 del scaler
 
-# Import model input data (bare earth - derived and Canopy data):
+# Import model input data
 os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m')
 DEMFiles=[str(subbasin)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif',str(subbasin)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif',str(subbasin)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif',str(subbasin)+'_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif',str(subbasin)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif']
 input=[]
 for n in range(len(DEMFiles)):
     [R,x]=np.array(pyrsgis.raster.read(DEMFiles[n], bands='all'))
-    input.append(x)
-os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/resolution_'+str(resolution)+'m')
-CanopyFiles=[str(subbasin)+'_CC_'+str(resolution)+'m.tif',str(subbasin)+'_CH_'+str(resolution)+'m.tif']
-for n in range(len(CanopyFiles)):
-    [R,x]=np.array(pyrsgis.raster.read(CanopyFiles[n], bands='all'))
     input.append(x)
 rows=x.shape[0]
 cols=x.shape[1]
@@ -55,7 +51,7 @@ for n in range(len(input)):
     x=input[n]
     x[x<-1]=np.nan
     input[n]=x
-del DEMFiles,CanopyFiles,x,n
+del DEMFiles,x,n
 
 # Import model input data (Xt data):
 [R,Xt]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution)+'m/Distributed_Xt_'+str(subbasin)+'_'+str(year)+'_'+str(phase)+'.tif', bands='all'))
@@ -115,7 +111,7 @@ for n in range(len(input)):
 del n,x,y
 
 # Organise input data for each survey
-input_parameters=[SD.astype('float64'),Surface_Characteristics[0].astype('float64'),Surface_Characteristics[5].astype('float64'),Surface_Characteristics[6].astype('float64'),Surface_Characteristics[3].astype('float64'),Surface_Characteristics[4].astype('float64'),Surface_Characteristics[1].astype('float64'),Xt.astype('float64'),Surface_Characteristics[2].astype('float64')]
+input_parameters=[SD.astype('float64'),Surface_Characteristics[0].astype('float64'),Surface_Characteristics[1].astype('float64'),Surface_Characteristics[2].astype('float64'),Surface_Characteristics[3].astype('float64'),Xt.astype('float64'),Surface_Characteristics[4].astype('float64')]
 del Surface_Characteristics,Xt
 
 # Normalise input variables
@@ -162,6 +158,7 @@ del input_parameters
 #nans=np.where(z==1)
 #y[nans]=np.nan
 #Simulated_density=y
+Simulated_density=Simulated_density + 0.029
 
 # Create mask for extent of snowdepth data
 study_area=SD

@@ -3,11 +3,11 @@
 # Gap-filled snowdepth maps for each phase
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2024' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 6 # Enter Bare Earth version number.
+watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='ENG' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2025' # Enter year of interest
+phases=['P1','P2'] # Enter survey phases ('P1','P2', etc.)
+BEversion = 1 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone

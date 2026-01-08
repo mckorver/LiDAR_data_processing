@@ -10,11 +10,11 @@
 # 'TSI', 'RussellCreek'
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin=['MV','SEY','CAP','BurwellLake','LochLomond','PalisadeLake','UpperSeymour'] #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin=['ENG','Arrowsmith','Fishtail','Cokely'] #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
 year='2025' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 6 # Enter Bare Earth version number
+phases=['P1','P2'] # Enter survey phases ('P1','P2', etc.)
+BEversion = 1 # Enter Bare Earth version number
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
@@ -83,12 +83,6 @@ for n in range(len(phases)):
     x=x*WS #only keep pixels with value=1 in watershed mask 
     Density.append(x)
 del x,n,bsl
-
-# TEMPORARY adjust density values of P1
-#x=Density[0]
-#y=np.where(x>0)
-#x[y]=0.29
-#Density[0]=x
 
 # Produce SWE maps (in mm) ---------------------------------------------------------------------------------------
 SWE=[]

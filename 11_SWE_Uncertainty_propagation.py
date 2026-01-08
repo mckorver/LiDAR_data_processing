@@ -12,17 +12,17 @@
 # Line 50-51: set the -1 data to 0
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin=['MV','SEY','CAP','BurwellLake','LochLomond','PalisadeLake','UpperSeymour'] #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2024' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.) Note run all surveys of a year simultaneously
-BEversion = 6 # Enter Bare Earth version number
+watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin=['ENG','Arrowsmith','Fishtail','Cokely'] #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2025' # Enter year of interest
+phases=['P1','P2'] # Enter survey phases ('P1','P2', etc.) Note run all surveys of a year simultaneously
+BEversion = 1 # Enter Bare Earth version number
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
 glaciermodel = 'NA' # Enter 'Y' or 'N' for including a SWE model for glaciers, or 'NA' if the watershed does not have glaciers
-rand_model_error=37 # ENTER RANDOM DENSITY MODEL ERROR (kg/m3) Cruikshank = 72, Englishman = 56, Metro Vancouver = 37, Tsitika = 51
+rand_model_error=56 # ENTER RANDOM DENSITY MODEL ERROR (kg/m3) Cruikshank = 72, Englishman = 56, Metro Vancouver = 37, Tsitika = 51
 
 # Import packages
 import numpy as np

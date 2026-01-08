@@ -6,16 +6,15 @@
 #This script performs validation checks 
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin = 'MV' 
-year='2024' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
+watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin = 'ENG' 
+year='2025' # Enter year of interest
+phases=['P1','P2'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 veg_correction='vegcorrected' # Enter 'vegcorrected' if you want to use the vegetation corected version and '' if not.
 lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-date = '20260106' #Enter date of today
 
 import rasterio
 import os
@@ -78,10 +77,8 @@ LidarDepths_sampled=[]
 for n in range(len(phases)):
     x=[x for x in LidarDepths[n].sample(Depth_coord_list[n])]
     x=np.array(x)
-    #i=np.where(x<0.000001) # Optional, define which LiDAR derived snowdepth values to exclude
-    #x[i]='NaN'
-    #i=np.where(x>10)
-    #x[i]='NaN'
+    i=np.where(x<0) # Optional, define which LiDAR derived snowdepth values to exclude
+    x[i]=np.nan
     LidarDepths_sampled.append(x)
 del n,m,Depth_coord_list,Depth_eastings,easting,northing,Depth_northings,cl,coord_list,x
 

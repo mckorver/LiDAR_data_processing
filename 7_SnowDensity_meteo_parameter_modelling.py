@@ -5,15 +5,15 @@
 # csv files of Xt, Snowfall, and positive degree days by elevation
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2024' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 6 # Enter Bare Earth version number.
+watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='ENG' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2025' # Enter year of interest
+phases=['P1','P2'] # Enter survey phases ('P1','P2', etc.)
+BEversion = 1 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-rain_snow_threshold=0.97 # ENTER RAIN-SNOW THRESHOLD (according to Jennings et al., 2018: 0.97 for Metro Vancouver, 0.98 for Tsitika, 0.90 for Cruikshank, 0.91 for Englishman)
+rain_snow_threshold=0.91 # ENTER RAIN-SNOW THRESHOLD (according to Jennings et al., 2018: 0.97 for Metro Vancouver, 0.98 for Tsitika, 0.90 for Cruikshank, 0.91 for Englishman)
 
 import os
 import pandas as pd
@@ -54,37 +54,37 @@ DateTime=np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv',use
 # QAQC of total precipitation data -------------------------------------------------------------------
 # Apply QAQC filters to total precip data
 precip_pipe=precip_pipe.astype('float64')
-for n in range(1,len(precip_pipe)): # Remove pipe drains
-    x=precip_pipe[n]-precip_pipe[n-1]
-    if x<-10:
-        precip_pipe[n]=np.nan
-for n in range(1,len(precip_pipe)-1): # Remove erroneously high spikes
-    x=precip_pipe[n+1]-precip_pipe[n-1]
-    if x>20:
-        for m in range(-20,20):
-            precip_pipe[n+m]=np.nan
-for n in range(1,len(precip_pipe)): # Remove decreases (precip is cumulative so should never decrease)
-    x=precip_pipe[n]-precip_pipe[n-1]
-    if x<0:
-        precip_pipe[n]=precip_pipe[n-1]
-del n,x
+#for n in range(1,len(precip_pipe)): # Remove pipe drains
+#    x=precip_pipe[n]-precip_pipe[n-1]
+#    if x<-10:
+#        precip_pipe[n]=np.nan
+#for n in range(1,len(precip_pipe)-1): # Remove erroneously high spikes
+#    x=precip_pipe[n+1]-precip_pipe[n-1]
+#    if x>20:
+#        for m in range(-20,20):
+#            precip_pipe[n+m]=np.nan
+#for n in range(1,len(precip_pipe)): # Remove decreases (precip is cumulative so should never decrease)
+#    x=precip_pipe[n]-precip_pipe[n-1]
+#    if x<0:
+#        precip_pipe[n]=precip_pipe[n-1]
+#del n,x
 
 df=pd.DataFrame(precip_pipe) 
-df2=np.array(df)
+#df2=np.array(df)
 
 # Calculate hourly precipitation
-Precip=[]
-for n in range(1,len(df2)):
-    x=df2[n]-df2[n-1]
-    Precip.append(x)
-Precip=np.array(Precip)
-Precip=np.insert(Precip,0,0)
-nans=np.argwhere(np.isnan(Precip))
-Precip[nans]=0
-Precip[Precip<0]=0
+#Precip=[]
+#for n in range(1,len(df2)):
+#    x=df2[n]-df2[n-1]
+#    Precip.append(x)
+Precip=np.array(df).flatten()
+#Precip=np.insert(Precip,0,0)
+#nans=np.argwhere(np.isnan(Precip))
+#Precip[nans]=0
+#Precip[Precip<0]=0
 plt.plot(Precip)
 plt.show() 
-del x,n,df2,df,nans,precip_pipe
+del x,n,df,precip_pipe
 
 # Calculations -----------------------------------------------------------------------------
 # Calculate atmospheric lapse rate
@@ -294,25 +294,25 @@ for n in range(len(Xt)):
     Xt2.append(x)
 Xt=np.array(Xt2)
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output')
-Xt_save=pd.DataFrame(Xt,columns=['P1','P2','P3'])
+Xt_save=pd.DataFrame(Xt,columns=phases)
 Xt_save.insert(0, "Elevation",elevs)
 Xt_save.to_csv("Xt_1m_intervals_"+str(subbasin)+"_"+str(year)+".csv", index = False)
-PDD_sum_save=pd.DataFrame(PDD_sum,columns=['P1','P2','P3'])
+PDD_sum_save=pd.DataFrame(PDD_sum,columns=phases)
 PDD_sum_save.insert(0, "Elevation",elevs)
 PDD_sum_save.to_csv("PDD_1m_intervals_"+str(subbasin)+"_"+str(year)+".csv", index = False)
-Total_snowfall_save=pd.DataFrame(Total_snowfall,columns=['P1','P2','P3'])
+Total_snowfall_save=pd.DataFrame(Total_snowfall,columns=phases)
 Total_snowfall_save.insert(0, "Elevation",elevs)
 Total_snowfall_save.to_csv("S_1m_intervals_"+str(subbasin)+"_"+str(year)+".csv", index = False)
 
 Xt_plot = Xt_save.plot(kind='line',x='Elevation',color=['red','blue','green'])
 Xt_plot.set_ylabel('Xt')
-Xt_plot.figure.savefig('Xt_1m_intervals_CRU_2025.png')
+Xt_plot.figure.savefig('Xt_1m_intervals_CRU_'+str(year)+'.png')
 PDD_plot = PDD_sum_save.plot(kind='line',x='Elevation',color=['red','blue','green'])
 PDD_plot.set_ylabel('PDD')
-PDD_plot.figure.savefig('PDD_1m_intervals_CRU_2025.png')
+PDD_plot.figure.savefig('PDD_1m_intervals_CRU_'+str(year)+'.png')
 Total_snowfall_plot = Total_snowfall_save.plot(kind='line',x='Elevation',color=['red','blue','green'])
 Total_snowfall_plot.set_ylabel('Total snowfall')
-Total_snowfall_plot.figure.savefig('Total_snowfall_1m_intervals_CRU_2025.png')
+Total_snowfall_plot.figure.savefig('Total_snowfall_1m_intervals_CRU_'+str(year)+'.png')
 
 # Spatially distribute results according to elevation
 # Distribute Xt

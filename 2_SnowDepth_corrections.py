@@ -8,22 +8,22 @@
 # processed snowdepths (capped, clipped, and vegetation corrected)
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2024' # Enter year of interest
-phases=['P2'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 6 # Enter Bare Earth version number.
+watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='ENG' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2025' # Enter year of interest
+phases=['P1','P2'] # Enter survey phases ('P1','P2', etc.)
+BEversion = 1 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 glaciers = 'N' # Enter 'Y' if the watershed has glaciers, 'N' if not
 
-bias_correction=[0,0,0] # For every phase: set bias correction (in metres)
-avalanche_threshold=[700,700,700] # For every phase: set highest elevation below which no avalanches are visible (in metres)
-upper_detection_threshold=[4,4,4] # For every phase: set upper threshold of snow depth anomalies to be removed (in metres)
-lower_detection_threshold=[-2,-2,-2] # For every phase: set lower threshold of snow depth anomalies to be removed (in metres)
-kernel_size=[200,200,200] # For every phase: set kernel size for filter used to detect anomalies (in pixels)
-expansion_distance=[10,10,10] # For every phase: set distance used to expand anomylous areas to be removed (in pixels)
+bias_correction=[0,0] # For every phase: set bias correction (in metres)
+avalanche_threshold=[1000,1000] # For every phase: set highest elevation below which no avalanches are visible (in metres)
+upper_detection_threshold=[4,4] # For every phase: set upper threshold of snow depth anomalies to be removed (in metres)
+lower_detection_threshold=[-2,-2] # For every phase: set lower threshold of snow depth anomalies to be removed (in metres)
+kernel_size=[200,200] # For every phase: set kernel size for filter used to detect anomalies (in pixels)
+expansion_distance=[10,10] # For every phase: set distance used to expand anomylous areas to be removed (in pixels)
 
 # Import package
 import pyrsgis

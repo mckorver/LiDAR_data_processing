@@ -6,15 +6,15 @@
 
 # ACTION REQUIRED BELOW
 # To run this code, use a conda environment configured for rasterio
-watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin= ['MV','SEY','CAP','BurwellLake','LochLomond','PalisadeLake','UpperSeymour'] #Enter prefixes for all subbasins, including the watershed.
-year='2024' # ENTER YEAR OF INTEREST
-phases=['P1','P2','P3'] # Enter survey numbers ,'P2','P3','P4','P5' NOTE run all surveys of a year simultaneously
+watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin= ['ENG','Arrowsmith','Fishtail','Cokely'] #Enter prefixes for all subbasins, including the watershed.
+year='2025' # ENTER YEAR OF INTEREST
+phases=['P1','P2'] # Enter survey numbers ,'P2','P3','P4','P5' NOTE run all surveys of a year simultaneously
 resolution=2
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-date='20251205' #Enter date of today
-lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
+date='20260108' #Enter date of today
+lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
 glaciermodel = 'NA' # Enter 'Y' or 'N' for including a SWE model for glaciers, or 'NA' if the watershed does not have glaciers
 
 import pandas as pd
@@ -40,7 +40,7 @@ for a in range(len(subbasin)):
     area=np.nansum(WS)*resolution*resolution
     WS_areas.append(area)
 WS_areas=pd.DataFrame(list(zip(subbasin,WS_areas)),columns=['watershed','WS_area_m2'])
-WS_areas.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(date)+'/'+str(watershed)+'_WS_areas_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv',index=False)
+WS_areas.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(year)+'/'+str(date)+'/'+str(watershed)+'_WS_areas_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv',index=False)
 
 # Create a summary table
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution)+'m/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'/')
@@ -80,7 +80,7 @@ cols = df1.columns.tolist()
 cols = cols[-1:] + cols[:-1]
 cols = cols[-1:] + cols[:-1]
 sum_table = df1[cols]
-sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(date)+'/Summary_table_'+str(year)+'_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv',index=False)
+sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(year)+'/'+str(date)+'/Summary_table_'+str(year)+'_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv',index=False)
 del df1,cols
 
 # Create an elevation banded summary table
@@ -108,7 +108,7 @@ for a in range(len(subbasin)):
         y = df1[df1['Survey']==str(phases[n])]
         x['watershed'] = subbasin[a]
         x['date'] = y.iloc[0]['date']
-        x.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(date)+'/Elevation_tables/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'/Elevation_table_'+str(subbasin[a])+'_'+str(year)+'_'+str(phases[n])+'.csv')
+        x.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/'+str(watershed)+'/'+str(year)+'/'+str(date)+'/Elevation_tables/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'/Elevation_table_'+str(subbasin[a])+'_'+str(year)+'_'+str(phases[n])+'.csv')
 
 # Update the 'Yearly_comparison' csv
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Tables/')

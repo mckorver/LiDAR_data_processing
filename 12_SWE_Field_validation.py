@@ -15,7 +15,6 @@ drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
 glaciermodel = 'N' # Enter 'Y' or 'N' for including a SWE model for glaciers
-date = '20251202' #Enter date of today
 
 import rasterio
 import os

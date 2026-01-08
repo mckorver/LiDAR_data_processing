@@ -6,11 +6,11 @@
 # 'ENG','Arrowsmith','Fishtail','Cokely'
 # 'CRU','Comox','Eric','Moat','Rees','Residual'
 
-watershed='MV' # ENG, MV, TSI, CRU
-subbasin=['MV'] #Enter subbasin of interest. Repeat watershed acronym if running entire watershed
-year='2024'
-phases=['P1','P2','P3'] # Survey number
-BEversion = 6 # Bare Earth version number
+watershed='ENG' # ENG, MV, TSI, CRU
+subbasin=['ENG'] #Enter subbasin of interest. Repeat watershed acronym if running entire watershed
+year='2025'
+phases=['P1','P2'] # Survey number
+BEversion = 1 # Bare Earth version number
 resolution = 1 # Raster resolution in meters
 resolution2 = 2 # Raster resolution in meters you want to downscale to
 drive = 'K' # File path drive letter
