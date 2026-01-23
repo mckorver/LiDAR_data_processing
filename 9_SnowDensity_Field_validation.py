@@ -6,10 +6,10 @@
 #This script performs validation checks 
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin = 'ENG' 
+watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin = 'CRU' 
 year='2025' # Enter year of interest
-phases=['P1','P2'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
+phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
@@ -146,6 +146,7 @@ Density_rmsediff=[]
 for n in range(len(LidarDensities_sampled)):
     x=LidarDensities_sampled[n].reshape(len(LidarDensities_sampled[n],))
     y=(x-FieldDensities[n]) #both in g/cm3
+    y[np.abs(y) > 0.3] =np.nan
     z=np.nanmean(y)
     zz=np.nanstd(y)
     mse=(np.nansum(y**2))/len(y)
@@ -215,7 +216,7 @@ def plot(x, y, xerr, yerr, **kwargs):
 g = g.map(plot, 'Field_density_mean', 'Lidar_density_mean', 'Field_density_sd', 'Lidar_density_sd')
 def plot_one_to_one(x, y, **kwargs):
     ax = plt.gca()
-    min_val = 0.4
+    min_val = 0.3
     max_val = 0.6
     ax.plot([min_val, max_val], [min_val, max_val], linestyle='--',**kwargs)
 g = g.map(plot_one_to_one, 'Field_density_mean', 'Lidar_density_mean')

@@ -3,17 +3,17 @@
 # Gap-filled snowdepth maps for each phase
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='ENG' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2025' # Enter year of interest
-phases=['P1','P2'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 1 # Enter Bare Earth version number.
+watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2024' # Enter year of interest
+phases=['P1'] # Enter survey phases ('P1','P2', etc.)
+BEversion = 2 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 veg_correction='vegcorrected' # Enter 'vegcorrected' if you want to use the vegetation corected version and '' if not.
 lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-glaciers = 'N' # Enter 'Y' if the watershed has glaciers, 'N' if not
+glaciers = 'Y' # Enter 'Y' if the watershed has glaciers, 'N' if not
 frac = 0.3 # The fraction of assumed lake snowdepth compared to surrounding land
 
 # Import packages
@@ -47,7 +47,7 @@ nans=np.where(WS<1)
 WS[nans]=np.nan
 
 # Read lakes vector dataset and create 100m buffer
-lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/vector/'+str(watershed)+'_lakes/')
+lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/vector/'+str(watershed)+'_lakes/')
 lakes['buffered'] = lakes.buffer(distance=100)
 
 for n in range(len(phases)):

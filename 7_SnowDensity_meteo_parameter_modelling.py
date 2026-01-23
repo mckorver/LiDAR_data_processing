@@ -5,15 +5,15 @@
 # csv files of Xt, Snowfall, and positive degree days by elevation
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='ENG' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
 year='2025' # Enter year of interest
-phases=['P1','P2'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 1 # Enter Bare Earth version number.
+phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
+BEversion = 2 # Enter Bare Earth version number.
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-rain_snow_threshold=0.91 # ENTER RAIN-SNOW THRESHOLD (according to Jennings et al., 2018: 0.97 for Metro Vancouver, 0.98 for Tsitika, 0.90 for Cruikshank, 0.91 for Englishman)
+rain_snow_threshold=0.90 # ENTER RAIN-SNOW THRESHOLD (according to Jennings et al., 2018: 0.97 for Metro Vancouver, 0.98 for Tsitika, 0.90 for Cruikshank, 0.91 for Englishman)
 
 import os
 import pandas as pd

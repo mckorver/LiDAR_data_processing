@@ -6,16 +6,16 @@
 
 # ACTION REQUIRED BELOW
 # To run this code, use a conda environment configured for rasterio
-watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin= ['ENG','Arrowsmith','Fishtail','Cokely'] #Enter prefixes for all subbasins, including the watershed.
+watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin= ['CRU','Comox','Eric','Moat','Rees','Residual'] #Enter prefixes for all subbasins, including the watershed.
 year='2025' # ENTER YEAR OF INTEREST
-phases=['P1','P2'] # Enter survey numbers ,'P2','P3','P4','P5' NOTE run all surveys of a year simultaneously
+phases=['P1','P2','P3'] # Enter survey numbers ,'P2','P3','P4','P5' NOTE run all surveys of a year simultaneously
 resolution=2
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-date='20260108' #Enter date of today
-lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-glaciermodel = 'NA' # Enter 'Y' or 'N' for including a SWE model for glaciers, or 'NA' if the watershed does not have glaciers
+date='20260123' #Enter date of today
+lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
+glaciermodel = 'Y' # Enter 'Y' or 'N' for including a SWE model for glaciers, or 'NA' if the watershed does not have glaciers
 
 import pandas as pd
 import glob

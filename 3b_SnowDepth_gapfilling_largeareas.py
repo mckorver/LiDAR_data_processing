@@ -15,7 +15,7 @@ resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 veg_correction='vegcorrected' # Enter 'vegcorrected' if you want to use the vegetation corected version and '' if not.
-lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
+lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
 glaciers = 'N' # Enter 'Y' if the watershed has glaciers, 'N' if not
 
 import numpy as np
@@ -46,7 +46,7 @@ WS[nans]=np.nan
 # Import masks that delineate the areas for gapfilling    
 gapfill = []
 for n in range(len(phases)):
-    [R,gap_area]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Manual_corrections/'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_gapfilling_area.tif'))
+    [R,gap_area]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Manual_corrections/'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_missing_areas.tif'))
     nans=np.where(gap_area==0)
     gap_area[nans]=np.nan
     gapfill.append(gap_area)
@@ -93,7 +93,7 @@ for n in range(len(phases)):
     [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution)+'m/Provisional_SD_'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped'+'_'+str(veg_correction)+'_filled_lakemodel'+str(lakemodel)+'_'+str(resolution)+'m.tif', bands='all'))
     nans1=np.where(x<0)
     x[nans1]=np.nan
-    nans2=np.where(gapfill[n]==1) #remove any pixels that were added through linear interpolation along the border of the gapfill area
+    nans2=np.where(gapfill[n]>0) #remove any pixels that were added through linear interpolation along the border of the gapfill area
     x[nans2]=np.nan
     x=x*WS #only keep pixels with value=1 in watershed mask
     Depth.append(x)
@@ -110,7 +110,7 @@ del Eastness,Northness,Slope
 # Run modelling-based gap-filling for each phase
 Depth_filled=[]
 for n in range(len(phases)):
-    # Determine areas where interpolation is required (i.e. within the gapfill area) and set these areas to 0 and everything else to 1
+    # Determine areas where modelling is required (i.e. within the gapfill area) and set these areas to 0 and everything else to 1
     gapfill_flattened=np.ndarray.flatten(gapfill[n])
     Depth_flattened=np.ndarray.flatten(Depth[n])
     modelling_areas=(Depth_flattened/Depth_flattened).astype('float64')

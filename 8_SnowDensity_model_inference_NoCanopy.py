@@ -5,11 +5,11 @@
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='ENG' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2025' # Enter year of interest
-phase='P2' # Enter survey phase. NOTE only one phase can be run at the time in this script
-BEversion = 1 # Enter Bare Earth version number
+watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+year='2024' # Enter year of interest
+phase='P1' # Enter survey phase. NOTE only one phase can be run at the time in this script
+BEversion = 6 # Enter Bare Earth version number
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone

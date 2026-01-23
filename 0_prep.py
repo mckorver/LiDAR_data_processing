@@ -6,11 +6,11 @@
 # 'ENG','Arrowsmith','Fishtail','Cokely'
 # 'CRU','Comox','Eric','Moat','Rees','Residual'
 
-watershed='ENG' # ENG, MV, TSI, CRU
-subbasin=['ENG'] #Enter subbasin of interest. Repeat watershed acronym if running entire watershed
+watershed='CRU' # ENG, MV, TSI, CRU
+subbasin=['CRU'] #Enter subbasin of interest. Repeat watershed acronym if running entire watershed
 year='2025'
-phases=['P1','P2'] # Survey number
-BEversion = 1 # Bare Earth version number
+phases=['P1','P2','P3'] # Survey number
+BEversion = 2 # Bare Earth version number
 resolution = 1 # Raster resolution in meters
 resolution2 = 2 # Raster resolution in meters you want to downscale to
 drive = 'K' # File path drive letter
@@ -67,9 +67,14 @@ for m in range(len(inputs)):
     [R,y]=np.array(pyrsgis.raster.read(str(watershed)+str(inputs[m])+'_'+str(resolution2)+'m.tif', bands='all'))
     pyrsgis.raster.export(y, R, filename=str(watershed)+str(inputs[m])+'_'+str(resolution2)+'m.tif')
 
-# Downsample lakes and glaciers to 2 m
+# Downsample lakes to 2 m
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/')
 cmd='gdalwarp -overwrite -tr 2.0 2.0 -r near -dstnodata "-9999" -of GTiff '+str(watershed)+'_lakes_'+str(resolution)+'m.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/'+str(watershed)+'_lakes_'+str(resolution2)+'m.tif'
+subprocess.run([x for x in cmd.split(" ") if x != ""])
+
+# Downsample glaciers to 2 m
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/')
+cmd='gdalwarp -overwrite -tr 2.0 2.0 -r near -dstnodata "-9999" -of GTiff '+str(watershed)+'_glaciers_'+str(resolution)+'m.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/'+str(watershed)+'_glaciers_'+str(resolution2)+'m.tif'
 subprocess.run([x for x in cmd.split(" ") if x != ""])
 
 # Downsample Watershed Mask to 2 m

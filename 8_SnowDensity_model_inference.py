@@ -4,15 +4,15 @@
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='ENG' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='ENG' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
 year='2024' # Enter year of interest
 phase='P1' # Enter survey phase. NOTE only one phase can be run at the time in this script
-BEversion = 1 # Enter Bare Earth version number
+BEversion = 2 # Enter Bare Earth version number
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth and SnowDensity on lakes
+lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth and SnowDensity on lakes
 
 import numpy as np
 import pyrsgis
@@ -162,6 +162,7 @@ del input_parameters
 #nans=np.where(z==1)
 #y[nans]=np.nan
 #Simulated_density=y
+#Simulated_density=Simulated_density + 0.111
 
 # Create mask for extent of snowdepth data
 study_area=SD
@@ -186,7 +187,7 @@ pyrsgis.raster.export(Simulated_density, R, filename=str(watershed)+'_'+str(year
 
 if lakemodel == 'Y':
     # Read lakes vector dataset and create 100m buffer
-    lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/vector/'+str(watershed)+'_lakes/')
+    lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/vector/'+str(watershed)+'_lakes/')
     lakes['buffered'] = lakes.buffer(distance=100)
 
     # Load Density raster
