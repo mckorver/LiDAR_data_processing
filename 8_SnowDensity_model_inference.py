@@ -152,7 +152,9 @@ gc.collect()
 Simulated_density=rf.predict(input_parameters)
 del input_parameters
 
-# TEMPORARY adjust density values
+# OPTIONAL adjust density values
+Simulated_density=Simulated_density + 0.071
+# OPTIONAL adjust density values
 #os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Maps/SnowDepth/'+str(watershed)+'/'+str(year)+'/resolution_'+str(resolution)+'m/')
 #[R,SD]=np.array(pyrsgis.raster.read(str(subbasin)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))
 #x=SD
@@ -162,7 +164,6 @@ del input_parameters
 #nans=np.where(z==1)
 #y[nans]=np.nan
 #Simulated_density=y
-#Simulated_density=Simulated_density + 0.111
 
 # Create mask for extent of snowdepth data
 study_area=SD

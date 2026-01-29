@@ -6,17 +6,17 @@
 # 'TSI', 'RussellCreek'
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='MV' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='MV' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
+watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
+subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
 year='2024' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 6 # Enter Bare Earth version number
+phases=['P1'] # Enter survey phases ('P1','P2', etc.)
+BEversion = 2 # Enter Bare Earth version number
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 veg_correction='vegcorrected' # Enter 'vegcorrected' if you want to use the vegetation corected version and '' if not.
-lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-glaciers = 'N' # Enter 'Y' if the watershed has glaciers, 'N' if not
+lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
+glaciers = 'Y' # Enter 'Y' if the watershed has glaciers, 'N' if not
 
 import numpy as np
 import pyrsgis
@@ -30,7 +30,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
 # Import input data -----------------------------------------------------------------------------
-# Import watershed masks
+# Import watershed mask without lakes
 if glaciers == 'Y':
     [R,WS_no_lakes]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution)+'m/'+str(subbasin)+'_watershed_no_lakes_no_glaciers_'+str(resolution)+'m.tif'))
 else:
@@ -98,6 +98,18 @@ for n in range(len(phases)):
     x=x*WS #only keep pixels with value=1 in watershed mask
     Depth.append(x)
 del x,n
+
+# OPTIONAL: if filling the area with a single value (e.g., 0), run this block and skip all further calculations (but save the raster at the end)
+#Depth_filled=[]
+#for n in range(len(phases)):
+#    x=Depth[n]
+#    fill=np.where(gapfill[n]>0) #remove any pixels that were added through linear interpolation along the border of the gapfill area
+#    x[fill]=0
+#    if lakemodel == 'N':
+#        [R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/'+str(watershed)+'_lakes_'+str(resolution)+'m.tif', bands='all'))
+#        i=np.where(lakemask==1)
+#        x[i]= np.nan
+#    Depth_filled.append(x)
 
 # Calculations ---------------------------------------------
 # Flatten model input datasets

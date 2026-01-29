@@ -14,14 +14,14 @@
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
 watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
 subbasin=['CRU','Comox','Eric','Moat','Rees','Residual'] #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2025' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.) Note run all surveys of a year simultaneously
+year='2024' # Enter year of interest
+phases=['P1'] # Enter survey phases ('P1','P2', etc.) Note run all surveys of a year simultaneously
 BEversion = 2 # Enter Bare Earth version number
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-glaciermodel = 'N' # Enter 'Y' or 'N' for including a SWE model for glaciers, or 'NA' if the watershed does not have glaciers
+lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
+glaciermodel = 'Y' # Enter 'Y' or 'N' for including a SWE model for glaciers, or 'NA' if the watershed does not have glaciers
 rand_model_error=72 # ENTER RANDOM DENSITY MODEL ERROR (kg/m3) Cruikshank = 72, Englishman = 56, Metro Vancouver = 37, Tsitika = 51
 
 # Import packages

@@ -8,8 +8,8 @@
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
 watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
 subbasin = 'CRU' 
-year='2025' # Enter year of interest
-phases=['P1','P2','P3'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
+year='2024' # Enter year of interest
+phases=['P1'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
 resolution = 1 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
