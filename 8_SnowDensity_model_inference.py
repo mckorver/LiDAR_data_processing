@@ -8,7 +8,8 @@ watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
 subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
 year='2024' # Enter year of interest
 phase='P1' # Enter survey phase. NOTE only one phase can be run at the time in this script
-BEversion = 2 # Enter Bare Earth version number
+BEversion = 2 # Enter Bare Earth DEM version number
+CANversion = 1 # Enter Canopy version number
 resolution = 2 # Enter resolution in meters
 drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
@@ -43,8 +44,8 @@ input=[]
 for n in range(len(DEMFiles)):
     [R,x]=np.array(pyrsgis.raster.read(DEMFiles[n], bands='all'))
     input.append(x)
-os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/resolution_'+str(resolution)+'m')
-CanopyFiles=[str(subbasin)+'_CC_'+str(resolution)+'m.tif',str(subbasin)+'_CH_'+str(resolution)+'m.tif']
+os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution)+'m')
+CanopyFiles=[str(subbasin)+'_CC_v'+str(CANversion)+'_'+str(resolution)+'m.tif',str(subbasin)+'_CH_v'+str(CANversion)+'_'+str(resolution)+'m.tif']
 for n in range(len(CanopyFiles)):
     [R,x]=np.array(pyrsgis.raster.read(CanopyFiles[n], bands='all'))
     input.append(x)
