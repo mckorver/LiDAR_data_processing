@@ -9,6 +9,7 @@ drive = 'K'
 lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
 
 # Import libraries
+import rasterio
 import pandas as pd
 import numpy as np
 import math
