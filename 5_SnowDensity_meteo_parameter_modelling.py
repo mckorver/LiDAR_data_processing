@@ -4,17 +4,6 @@
 # Raster maps of Xt, Snowfall, and positive degree days
 # csv files of Xt, Snowfall, and positive degree days by elevation
 
-# ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2023' # Enter year of interest
-phases=['P1','P2','P3','P4','P5'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 2 # Enter Bare Earth version number.
-resolution = 1 # Enter resolution in meters
-drive = 'K'
-lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-rain_snow_threshold=0.90 # ENTER RAIN-SNOW THRESHOLD (according to Jennings et al., 2018: 0.97 for Metro Vancouver, 0.98 for Tsitika, 0.90 for Cruikshank, 0.91 for Englishman)
-
 import os
 import pandas as pd
 import numpy as np
@@ -23,8 +12,33 @@ import matplotlib.pyplot as plt
 import pyrsgis
 
 # Import input data ------------------------------------------------------------------------------------------------
+# Import processing variables
+var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+watershed = var['watershed'][0]
+extent = var['extent'][0]
+year = var['year'][0]
+drive = var['drive'][0]
+lidar = var['lidar'][0]
+resolution1 = var['resolution1'][0]
+BEversion = var['BEversion'][0]
+phases = []
+x = var['phases'][var['phases'].notna()]
+for n in range(len(x)):
+    a = x[n]
+    phases.append(a)
+
+# RAIN-SNOW THRESHOLD (according to Jennings et al., 2018)
+if watershed == 'TSI':
+    rain_snow_threshold=0.98 
+elif watershed == 'CRU':
+    rain_snow_threshold=0.90
+elif watershed == 'ENG':
+    rain_snow_threshold=0.91
+elif watershed == 'MV':
+    rain_snow_threshold=0.97
+    
 # Import bare earth and get min and max elev
-[R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m/'+str(subbasin)+'_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif', bands='all'))
+[R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif', bands='all'))
 nans=np.where(BE<0)
 BE[nans]=np.nan
 BE=BE.astype('float64')
@@ -38,50 +52,23 @@ max_elev=np.ceil(max_elev).astype(int)
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year))
 survey_dates=[]
 for n in phases:
-    x=pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv')
+    x=pd.read_csv('Metadata_'+str(extent)+'_'+str(year)+'.csv')
     y=x[x['survey']==n]
     y=y['survey_days'].iloc[0]
     survey_dates.append(y)
-WSup_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv', usecols=['WSup_elev']))[0])
-WSlow_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv', usecols=['WSlow_elev']))[0])
+WSup_elev=int(np.array(pd.read_csv('Metadata_'+str(extent)+'_'+str(year)+'.csv', usecols=['WSup_elev']))[0])
+WSlow_elev=int(np.array(pd.read_csv('Metadata_'+str(extent)+'_'+str(year)+'.csv', usecols=['WSlow_elev']))[0])
 
 # Import weather station data
-Tair_up = np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv', usecols=['Tair_up']))
-Tair_low = np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv', usecols=['Tair_low']))
-precip_pipe = np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv', usecols=['PC_low_mm']))
-DateTime=np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv',usecols=['DateTime']))
+Tair_up = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['Tair_up']))
+Tair_low = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['Tair_low']))
+precip_pipe = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['PC_low_mm']))
+DateTime=np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv',usecols=['DateTime']))
 
-# QAQC of total precipitation data -------------------------------------------------------------------
-# Apply QAQC filters to total precip data
+# Reformat and check total precip data
 precip_pipe=precip_pipe.astype('float64')
-#for n in range(1,len(precip_pipe)): # Remove pipe drains
-#    x=precip_pipe[n]-precip_pipe[n-1]
-#    if x<-10:
-#        precip_pipe[n]=np.nan
-#for n in range(1,len(precip_pipe)-1): # Remove erroneously high spikes
-#    x=precip_pipe[n+1]-precip_pipe[n-1]
-#    if x>20:
-#        for m in range(-20,20):
-#            precip_pipe[n+m]=np.nan
-#for n in range(1,len(precip_pipe)): # Remove decreases (precip is cumulative so should never decrease)
-#    x=precip_pipe[n]-precip_pipe[n-1]
-#    if x<0:
-#        precip_pipe[n]=precip_pipe[n-1]
-#del n,x
-
 df=pd.DataFrame(precip_pipe) 
-#df2=np.array(df)
-
-# Calculate hourly precipitation
-#Precip=[]
-#for n in range(1,len(df2)):
-#    x=df2[n]-df2[n-1]
-#    Precip.append(x)
 Precip=np.array(df).flatten()
-#Precip=np.insert(Precip,0,0)
-#nans=np.argwhere(np.isnan(Precip))
-#Precip[nans]=0
-#Precip[Precip<0]=0
 plt.plot(Precip)
 plt.show() 
 del x,n,df,precip_pipe
@@ -296,13 +283,13 @@ Xt=np.array(Xt2)
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output')
 Xt_save=pd.DataFrame(Xt,columns=phases)
 Xt_save.insert(0, "Elevation",elevs)
-Xt_save.to_csv("Xt_1m_intervals_"+str(subbasin)+"_"+str(year)+".csv", index = False)
+Xt_save.to_csv("Xt_1m_intervals_"+str(extent)+"_"+str(year)+".csv", index = False)
 PDD_sum_save=pd.DataFrame(PDD_sum,columns=phases)
 PDD_sum_save.insert(0, "Elevation",elevs)
-PDD_sum_save.to_csv("PDD_1m_intervals_"+str(subbasin)+"_"+str(year)+".csv", index = False)
+PDD_sum_save.to_csv("PDD_1m_intervals_"+str(extent)+"_"+str(year)+".csv", index = False)
 Total_snowfall_save=pd.DataFrame(Total_snowfall,columns=phases)
 Total_snowfall_save.insert(0, "Elevation",elevs)
-Total_snowfall_save.to_csv("S_1m_intervals_"+str(subbasin)+"_"+str(year)+".csv", index = False)
+Total_snowfall_save.to_csv("S_1m_intervals_"+str(extent)+"_"+str(year)+".csv", index = False)
 
 Xt_plot = Xt_save.plot(kind='line',x='Elevation',color=['red','blue','green'])
 Xt_plot.set_ylabel('Xt')
@@ -332,9 +319,9 @@ for n in range(len(Xt)):
 del n,x,y,xx,yy,m,Xt,elev_data
 
 # Export spatially-distributed Xt
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution)+'m/')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution1)+'m/')
 for n in range(len(Xt_all)):
-    pyrsgis.raster.export(Xt_all[n], R, filename='Distributed_Xt_'+str(subbasin)+'_'+str(year)+'_'+str(phases[n])+'.tif')
+    pyrsgis.raster.export(Xt_all[n], R, filename='Distributed_Xt_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'.tif')
 
 # Distribute PDD
 elev_data=np.around(BE,0)
@@ -353,9 +340,9 @@ for n in range(len(PDD)):
 del n,x,y,xx,yy,m,PDD,elev_data,min_elev,max_elev
 
 # Export spatially-distributed PDD
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution)+'m/')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution1)+'m/')
 for n in range(len(phases)):
-    pyrsgis.raster.export(PDD_all[n], R, filename='Distributed_PDD_'+str(subbasin)+'_'+str(year)+'_'+str(phases[n])+'.tif')
+    pyrsgis.raster.export(PDD_all[n], R, filename='Distributed_PDD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'.tif')
     
 # Distribute snowfall
 elev_data=np.around(BE,0)
@@ -374,6 +361,6 @@ for n in range(len(S)):
 del n,x,y,xx,yy,m,S,elev_data
 
 # Export spatially-distributed snowfall
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution)+'m/')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution1)+'m/')
 for n in range(len(S_all)):
-    pyrsgis.raster.export(S_all[n], R, filename='Distributed_Snowfall_'+str(subbasin)+'_'+str(year)+'_'+str(phases[n])+'.tif')
+    pyrsgis.raster.export(S_all[n], R, filename='Distributed_Snowfall_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'.tif')

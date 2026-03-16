@@ -3,19 +3,6 @@
 # csv files of plot averaged statistics (mean, sd) and difference (LiDAR - field) statistics
 # NOTE this script has to be run on all surveys of a year, results for all surveys are outputted into one file
 
-#This script performs validation checks 
-
-# ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin = 'CRU' 
-year='2024' # Enter year of interest
-phases=['P1'] # Enter survey phases ('P1','P2', etc.) NOTE run all surveys of a year simultaneously
-resolution = 1 # Enter resolution in meters
-drive = 'K'
-lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-veg_correction='vegcorrected' # Enter 'vegcorrected' if you want to use the vegetation corected version and '' if not.
-lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-
 import rasterio
 import os
 import numpy as np
@@ -25,22 +12,90 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Import input data ------------------------------------------------------------------
-# Read field data collection coordinates
+# Import processing variables
+var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+watershed = var['watershed'][0]
+extent = var['extent'][0]
+year = var['year'][0]
+drive = var['drive'][0]
+lidar = var['lidar'][0]
+resolution1 = var['resolution1'][0]
+phases = []
+x = var['phases'][var['phases'].notna()]
+for n in range(len(x)):
+    a = x[n]
+    phases.append(a)
+
+## QAQC field data
+datetimes_field=[]
+datetimes_aco=[]
+eastings=[]
+northings=[]
+depth_ids=[]
+depths=[]
+cores=[]
+densities=[]
+manual_remove=[]
+field_phases=[]
 os.chdir(str(drive)+':/LiDAR_data_processing/Field_data/'+str(watershed)+'/'+str(year))
-#filenames=sorted(glob.glob('**.csv'))
-field_data=[]
-for n in range(len(phases)):
-    x=pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[n]+'.csv'))
-    #x = x[x['sample_rating']>data_quality]
-    field_data.append(x)
-del n,x
+for b in range(len(phases)):
+    # Read field data collection coordinates
+    datetime_f=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['plot_datetime'],parse_dates=['plot_datetime']))
+    datetime_f=datetime_f.reshape(len(datetime_f),)
+    datetime_l=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['aco_datetime'],parse_dates=['aco_datetime']))
+    datetime_l=datetime_l.reshape(len(datetime_l),)
+    easting=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['easting_m'])).astype('float64')
+    easting=easting.reshape(len(easting),)
+    northing=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['northing_m'])).astype('float64')
+    northing=northing.reshape(len(northing),)
+    plot_id=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['plot_id']))
+    plot_id=plot_id.reshape(len(plot_id),)
+    depth=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['snow_depth'])).astype('float64')
+    depth=depth.reshape(len(depth),)
+    core=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['core_length_final'])).astype('float64')
+    core=core.reshape(len(core),)
+    density=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['density'])).astype('float64')
+    density=density.reshape(len(density),)
+    manual_rem=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['manual_remove']))
+    manual_rem=manual_rem.reshape(len(manual_rem),)
+    field_phase=np.array(phases[b])
+    field_phase=np.repeat(field_phase,len(easting))
+    datetimes_field.append(datetime_f)
+    datetimes_aco.append(datetime_l)
+    eastings.append(easting)
+    northings.append(northing)
+    depth_ids.append(plot_id)
+    depths.append(depth)
+    cores.append(core)
+    densities.append(density)
+    manual_remove.append(manual_rem)
+    field_phases.append(field_phase)
+
+df=pd.DataFrame({"phase":np.concatenate(field_phases),"datetime_field":np.concatenate(datetimes_field),"datetime_aco":np.concatenate(datetimes_aco),
+                 "easting_m":np.concatenate(eastings),"northing_m":np.concatenate(northings),"plot_id":np.concatenate(depth_ids),
+                 "snow_depth":np.concatenate(depths),"core_depth":np.concatenate(cores),
+                 "density":np.concatenate(densities), "manual_remove":np.concatenate(manual_remove)})
+df['time_gap_hr']=df['datetime_field']-df['datetime_aco']
+df['time_gap_hr'] = df['time_gap_hr'].dt.total_seconds()/3600
+df['time_gap_hr'] = df['time_gap_hr'].abs().astype('int64')
+df['year'] = df['datetime_field'].dt.year.astype('string')
+df['month'] = df['datetime_field'].dt.month
+df['snow_depth_m'] = df['snow_depth']/100
+
+# QAQC field data
+df=df[(df['snow_depth'].notna())]
+df['flag'] = 'AV'
+df.loc[(df['time_gap_hr']>60), 'flag'] = 'time'
+df.loc[(df['manual_remove']=='Y'), 'flag'] = 'manual'
+df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
+filt=df[(df['flag']=='AV')]
 
 Depth_ids=[]
 Depth_eastings=[]
 Depth_northings=[]
 FieldDepths=[]
-for n in range(len(field_data)):
-    x = field_data[n]
+for n in phases:
+    x = filt[(filt['phase']==n)]
     y = x[x['snow_depth'].notnull()]
     plot_id=np.array(y['plot_id'])
     plot_id=plot_id.reshape(len(plot_id),)
@@ -59,7 +114,7 @@ del x,y,n,plot_id,easting,northing,depth
 # Read gridded input datasets
 LidarDepths=[] #in m
 for n in range(len(phases)):
-    x=rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution)+'m/Provisional_SD_'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped'+'_'+str(veg_correction)+'_'+str(resolution)+'m.tif')    
+    x=rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m/Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_'+str(resolution1)+'m.tif')    
     LidarDepths.append(x)
 del n,x
 
@@ -200,7 +255,7 @@ for n in range(len(phases)):
 # For the entire watershed
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Bias_analysis/'+str(watershed)+'/'+str(year)+'/')
 Depth_field=pd.DataFrame(list(zip(phases,Depth_meandiff,Depth_sddiff,Depth_rmsediff)),columns=['survey','Depth_mean_diff_m','Depth_sd_diff_m','Depth_rmse_diff_m'])
-Depth_field.to_csv(str(watershed)+'_field_validation_Depth.csv', index=False)
+Depth_field.to_csv(str(extent)+'_field_validation_Depth.csv', index=False)
 
 # By plot
 y = []
@@ -209,7 +264,7 @@ for n in range(len(phases)):
     x=pd.DataFrame(list(zip(surveys,Depth_plot_names[n],FieldDepth_plot_mean[n],FieldDepth_plot_sd[n],LidarDepth_plot_mean[n],LidarDepth_plot_sd[n],Depth_plot_meandiffs[n].flatten(),Depth_plot_sddiffs[n].flatten())),columns=['survey','Plot_id','Field_Depth_mean','Field_Depth_sd','Lidar_Depth_mean','Lidar_Depth_sd','Depth_mean_diff_m','Depth_sd_diff_m'])
     y.append(x)
 Depth_plot = pd.concat(y)
-Depth_plot.to_csv(str(watershed)+'_field_validation_by_plot_Depth.csv', index=False)
+Depth_plot.to_csv(str(extent)+'_field_validation_by_plot_Depth.csv', index=False)
     
 maxvalue=np.round(np.max(Depth_plot['Lidar_Depth_mean']) + 1,decimals = 1)
 g = sns.FacetGrid(Depth_plot, col='survey',hue='Plot_id')

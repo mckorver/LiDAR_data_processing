@@ -1,22 +1,4 @@
-# This code fills in spatial data gaps with modelled Snow Depth using a random forest model
-
-# 'CRU','Comox','Eric','Moat','Rees','Residual'
-# 'MV','SEY','CAP','BurwellLake','LochLomond','PalisadeLake','UpperSeymour'
-# 'ENG','Arrowsmith','Fishtail','Cokely'
-# 'TSI', 'RussellCreek'
-
-# ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2024' # Enter year of interest
-phases=['P1'] # Enter survey phases ('P1','P2', etc.)
-BEversion = 2 # Enter Bare Earth version number
-resolution = 1 # Enter resolution in meters
-drive = 'K'
-lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-veg_correction='vegcorrected' # Enter 'vegcorrected' if you want to use the vegetation corected version and '' if not.
-lakemodel = 'N' # Enter 'Y' or 'N' for including modelled SnowDepth on lakes
-glaciers = 'Y' # Enter 'Y' if the watershed has glaciers, 'N' if not
+# This code fills in large spatial data gaps with modelled Snow Depth based on elevation, aspect, and slope (random forest model)
 
 import numpy as np
 import pyrsgis
@@ -30,41 +12,59 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
 # Import input data -----------------------------------------------------------------------------
+# Import processing variables
+var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+watershed = var['watershed'][0]
+extent = var['extent'][0]
+year = var['year'][0]
+drive = var['drive'][0]
+lidar = var['lidar'][0]
+resolution1 = var['resolution1'][0]
+BEversion = var['BEversion'][0]
+glaciers = var['glaciers'][0]
+glaciermodel = var['glaciermodel'][0]
+lakemodel = var['lakemodel'][0]
+phases = []
+x = var['phases'][var['phases'].notna()]
+for n in range(len(x)):
+    a = x[n]
+    phases.append(a)
+
 # Import watershed mask without lakes
 if glaciers == 'Y':
-    [R,WS_no_lakes]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution)+'m/'+str(subbasin)+'_watershed_no_lakes_no_glaciers_'+str(resolution)+'m.tif'))
+    [R,WS_no_lakes]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_no_lakes_no_glaciers_'+str(resolution1)+'m.tif'))
 else:
-    [R,WS_no_lakes]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution)+'m/'+str(subbasin)+'_watershed_no_lakes_'+str(resolution)+'m.tif'))
+    [R,WS_no_lakes]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_no_lakes_'+str(resolution1)+'m.tif'))
 nans=np.where(WS_no_lakes<=0)
 WS_no_lakes[nans]=np.nan
 
 # Import watershed mask
-[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution)+'m/'+str(watershed)+'_watershed_'+str(resolution)+'m.tif'))
+[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_'+str(resolution1)+'m.tif'))
 nans=np.where(WS<1)
 WS[nans]=np.nan
 
 # Import masks that delineate the areas for gapfilling    
 gapfill = []
 for n in range(len(phases)):
-    [R,gap_area]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Manual_corrections/'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_missing_areas.tif'))
+    [R,gap_area]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Manual_corrections/vector/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_missing_areas.tif'))
     nans=np.where(gap_area==0)
     gap_area[nans]=np.nan
     gapfill.append(gap_area)
 
 # Import elevation, eastness, northness, and slope
-[R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m/'+str(watershed)+'_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif', bands='all'))
+[R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif', bands='all'))
 nans=np.where(BE<0)
 BE[nans]=np.nan
 BE=BE*WS_no_lakes # Remove input data for lake areas 
-[R,Eastness]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m/'+str(watershed)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif', bands='all'))
+[R,Eastness]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif', bands='all'))
 nans=np.where(Eastness<-100)
 Eastness[nans]=np.nan
 Eastness=Eastness*WS_no_lakes # Remove input data for lake areas
-[R,Northness]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m/'+str(watershed)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif', bands='all'))
+[R,Northness]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif', bands='all'))
 nans=np.where(Northness<-100)
 Northness[nans]=np.nan
 Northness=Northness*WS_no_lakes # Remove input data for lake areas
-[R,Slope]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m/'+str(watershed)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif', bands='all'))
+[R,Slope]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif', bands='all'))
 nans=np.where(Slope<-100)
 Slope[nans]=np.nan
 Slope=Slope*WS_no_lakes # Remove input data for lake areas
@@ -73,11 +73,11 @@ del nans
 # Import snow free areas. A raster mask is used if available, otherwise an elevation threshold.
 SFAs=[]
 for n in phases:
-    file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution)+'m/'+str(watershed)+'_'+str(year)+'_'+str(n)+'_SFA.tif')
+    file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_'+str(year)+'_'+str(n)+'_SFA.tif')
     if file.is_file():
-        [R,SFA]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution)+'m/'+str(watershed)+'_'+str(year)+'_'+str(n)+'_SFA.tif', bands='all'))
+        [R,SFA]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_'+str(year)+'_'+str(n)+'_SFA.tif', bands='all'))
     else:
-        x=pd.read_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/SFETs_'+str(watershed)+'_'+str(year)+'.csv')
+        x=pd.read_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/SFETs_'+str(extent)+'_'+str(year)+'.csv')
         SFET=x[x['Survey']==n]
         SFET=SFET['SFETs'].iloc[0]
         SFA=BE/BE
@@ -90,7 +90,10 @@ for n in phases:
 Depth=[]
 for n in range(len(phases)):
     # Import snow depth data (in m) - clip to study area
-    [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution)+'m/Provisional_SD_'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped'+'_'+str(veg_correction)+'_filled_lakemodel'+str(lakemodel)+'_'+str(resolution)+'m.tif', bands='all'))
+    if glaciers == 'Y':
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m/Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'_'+str(resolution1)+'m.tif', bands='all'))
+    else:
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m/Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif', bands='all'))
     nans1=np.where(x<0)
     x[nans1]=np.nan
     nans2=np.where(gapfill[n]>0) #remove any pixels that were added through linear interpolation along the border of the gapfill area
@@ -106,7 +109,7 @@ del x,n
 #    fill=np.where(gapfill[n]>0) #remove any pixels that were added through linear interpolation along the border of the gapfill area
 #    x[fill]=0
 #    if lakemodel == 'N':
-#        [R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/'+str(watershed)+'_lakes_'+str(resolution)+'m.tif', bands='all'))
+#        [R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_lakes_'+str(resolution1)+'m.tif', bands='all'))
 #        i=np.where(lakemask==1)
 #        x[i]= np.nan
 #    Depth_filled.append(x)
@@ -234,7 +237,7 @@ for n in range(len(phases)):
     filled=rasterio.fill.fillnodata(x,interpolation_areas_2d) #enter 'interpolation_areas_2d' if using mask
 
     if lakemodel == 'N':
-        [R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/'+str(watershed)+'_lakes_'+str(resolution)+'m.tif', bands='all'))
+        [R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_lakes_'+str(resolution1)+'m.tif', bands='all'))
         i=np.where(lakemask==1)
         filled[i]= np.nan
 
@@ -242,6 +245,12 @@ for n in range(len(phases)):
     del dims,Depth_flattened
 
 # Output ------------------------------------------------------------------------------------------
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution)+'m')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m')
 for n in range(len(phases)):
-    pyrsgis.raster.export(Depth_filled[n], R, filename='Provisional_SD_'+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped'+'_'+str(veg_correction)+'_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution)+'m.tif')
+    if glaciers == 'Y':
+        pyrsgis.raster.export(Depth_filled[n], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'_'+str(resolution1)+'m.tif')
+    else:
+        pyrsgis.raster.export(Depth_filled[n], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif')
+
+# Save processing variables
+var.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Metadata/'+str(extent)+'_'+str(year)+'_processing_variables.csv')

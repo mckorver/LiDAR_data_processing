@@ -4,16 +4,8 @@
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-subbasin='CRU' #Enter prefix for subbasin. If entire watershed is processed, repeat watershed prefix
-year='2024' # Enter year of interest
-phase='P1' # Enter survey phase. NOTE only one phase can be run at the time in this script
-BEversion = 2 # Enter Bare Earth DEM version number
-CANversion = 1 # Enter Canopy version number
-resolution = 2 # Enter resolution in meters
-drive = 'K'
-lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-lakemodel = 'Y' # Enter 'Y' or 'N' for including modelled SnowDepth and SnowDensity on lakes
+phase='P3' # Enter survey phase. NOTE only one phase can be run at the time in this script
+phase_index=2 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
 
 import numpy as np
 import pyrsgis
@@ -28,8 +20,28 @@ from rasterstats import zonal_stats
 from pathlib import Path
 
 # Import data -----------------------------------------------------------------------------------------------------
+# Import processing variables
+var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str, 'DENSversion':str})
+watershed = var['watershed'][0]
+extent = var['extent'][0]
+year = var['year'][0]
+drive = var['drive'][0]
+lidar = var['lidar'][0]
+resolution2 = var['resolution2'][0]
+BEversion = var['BEversion'][0]
+CANversion = var['CANversion'][0]
+glaciers = var['glaciers'][0]
+glaciermodel = var['glaciermodel'][0]
+lakemodel = var['lakemodel'][0]
+DENSversion = var['DENSversion'][0]
+bias_correction_dens = []
+x = var['bias_correction_dens'][var['bias_correction_dens'].notna()]
+for n in range(len(x)):
+    a = x[n]
+    bias_correction_dens.append(a)
+
 # Import snow density model
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Overall_density_model/All_parameters')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion))
 rf = joblib.load('RF_density_model_'+str(watershed)+'.joblib')
 all_scalers=[]
 for n in range(1,10):
@@ -38,14 +50,14 @@ for n in range(1,10):
 del scaler
 
 # Import model input data (bare earth - derived and Canopy data):
-os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m')
-DEMFiles=[str(subbasin)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif',str(subbasin)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif',str(subbasin)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif',str(subbasin)+'_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif',str(subbasin)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif']
+os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m')
+DEMFiles=[str(extent)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif',str(extent)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif',str(extent)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif',str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif',str(extent)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif']
 input=[]
 for n in range(len(DEMFiles)):
     [R,x]=np.array(pyrsgis.raster.read(DEMFiles[n], bands='all'))
     input.append(x)
-os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution)+'m')
-CanopyFiles=[str(subbasin)+'_CC_v'+str(CANversion)+'_'+str(resolution)+'m.tif',str(subbasin)+'_CH_v'+str(CANversion)+'_'+str(resolution)+'m.tif']
+os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution2)+'m')
+CanopyFiles=[str(extent)+'_CC_v'+str(CANversion)+'_'+str(resolution2)+'m.tif',str(extent)+'_CH_v'+str(CANversion)+'_'+str(resolution2)+'m.tif']
 for n in range(len(CanopyFiles)):
     [R,x]=np.array(pyrsgis.raster.read(CanopyFiles[n], bands='all'))
     input.append(x)
@@ -59,7 +71,7 @@ for n in range(len(input)):
 del DEMFiles,CanopyFiles,x,n
 
 # Import model input data (Xt data):
-[R,Xt]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution)+'m/Distributed_Xt_'+str(subbasin)+'_'+str(year)+'_'+str(phase)+'.tif', bands='all'))
+[R,Xt]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution2)+'m/Distributed_Xt_'+str(extent)+'_'+str(year)+'_'+str(phase)+'.tif', bands='all'))
 for n in range(len(Xt)):
     x=Xt[n]
     x[x<0]=np.nan
@@ -68,19 +80,22 @@ Xt=np.ndarray.flatten(Xt)
 del x,n
 
 # Import model input data (snow depth data converted to cm):
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Maps/SnowDepth/'+str(watershed)+'/'+str(year)+'/resolution_'+str(resolution)+'m/')
-[R,SD]=np.array(pyrsgis.raster.read(str(subbasin)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/')
+if glaciers == 'Y':
+    [R,SD]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif', bands='all'))
+else:
+    [R,SD]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))
 nans=np.where(SD<-100)
 SD = SD.astype(float)        
 SD[nans] = np.nan          
 SD=np.ndarray.flatten(SD)*100 # convert to cm
 
 # Import snow free areas. A raster mask is used if available, otherwise an elevation threshold.
-file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution)+'m/'+str(subbasin)+'_'+str(year)+'_'+str(phase)+'_SFA.tif')
+file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SFA.tif')
 if file.is_file():
-    [R,SFA]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution)+'m/'+str(subbasin)+'_'+str(year)+'_'+str(phase)+'_SFA.tif', bands='all'))
+    [R,SFA]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SFA.tif', bands='all'))
 else:
-    x=pd.read_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/SFETs_'+str(subbasin)+'_'+str(year)+'.csv')
+    x=pd.read_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/SFETs_'+str(extent)+'_'+str(year)+'.csv')
     SFET=x[x['Survey']==phase]
     SFET=SFET['SFETs'].iloc[0]
     BE=input[3]
@@ -154,10 +169,10 @@ Simulated_density=rf.predict(input_parameters)
 del input_parameters
 
 # OPTIONAL adjust density values
-Simulated_density=Simulated_density + 0.071
+Simulated_density=Simulated_density + bias_correction_dens[phase_index]
 # OPTIONAL adjust density values
-#os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Maps/SnowDepth/'+str(watershed)+'/'+str(year)+'/resolution_'+str(resolution)+'m/')
-#[R,SD]=np.array(pyrsgis.raster.read(str(subbasin)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))
+#os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/')
+#[R,SD]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))
 #x=SD
 #y=-0.0137*x+0.3327
 #y=np.ndarray.flatten(y)
@@ -179,21 +194,21 @@ Simulated_density=np.reshape(Simulated_density,(rows,cols))
 del all_nans_all_surveys,rows,cols
 
 # Remove lakes
-[R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/'+str(watershed)+'_lakes_'+str(resolution)+'m.tif', bands='all'))
+[R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_lakes_'+str(resolution2)+'m.tif', bands='all'))
 i=np.where(lakemask==1)
 Simulated_density[i]= np.nan
 
 # Export simulated snow density map
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Maps/SnowDensity/'+str(watershed)+'/'+str(year)+'/resolution_'+str(resolution)+'m/')
-pyrsgis.raster.export(Simulated_density, R, filename=str(watershed)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/')
+pyrsgis.raster.export(Simulated_density, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif')
 
 if lakemodel == 'Y':
     # Read lakes vector dataset and create 100m buffer
-    lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution)+'m/vector/'+str(watershed)+'_lakes/')
+    lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/vector/'+str(extent)+'_lakes/')
     lakes['buffered'] = lakes.buffer(distance=100)
 
     # Load Density raster
-    SD_in = rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Maps/SnowDensity/'+str(watershed)+'/'+str(year)+'/resolution_'+str(resolution)+'m/'+str(watershed)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif')
+    SD_in = rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif')
 
     # Calculate mean, median, min, max snowdensity around each lake
     stats = zonal_stats(lakes['buffered'], SD_in.read(1), affine=SD_in.transform, nodata = SD_in.nodata, stats=["mean", "median", "max", "min"])
@@ -212,7 +227,7 @@ if lakemodel == 'Y':
                                     transform = SD_in.transform,
                                     all_touched = False)
     with rasterio.open(
-            str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Maps/SnowDensity/'+str(watershed)+'/'+str(year)+'/resolution_'+str(resolution)+'m/lakes_temp.tif', "w",
+            str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/lakes_temp.tif', "w",
             driver = "GTiff",
             crs = SD_in.crs,
             transform = SD_in.transform,
@@ -224,8 +239,8 @@ if lakemodel == 'Y':
     del SD_in,geom,geom_value,rasterized,dst,stats
 
     # Reload snowdensity (land) and snowdensity (lake) rasters and merge them
-    [R,land]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Maps/SnowDensity/'+str(watershed)+'/'+str(year)+'/resolution_'+str(resolution)+'m/'+str(watershed)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif'))
-    [S,lake]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Maps/SnowDensity/'+str(watershed)+'/'+str(year)+'/resolution_'+str(resolution)+'m/lakes_temp.tif'))
+    [R,land]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif'))
+    [S,lake]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/lakes_temp.tif'))
 
     nans=np.where(land<-100)
     land[nans]=np.nan
@@ -247,5 +262,8 @@ if lakemodel == 'Y':
     dims=np.shape(land)
     SD_out=np.reshape(land_flattened,(dims[0],dims[1]))
 
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/Maps/SnowDensity/'+str(watershed)+'/'+str(year)+'/resolution_'+str(resolution)+'m')
-    pyrsgis.raster.export(SD_out, R, filename=str(watershed)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif')
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m')
+    pyrsgis.raster.export(SD_out, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif')
+
+# Save processing variables
+var.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Metadata/'+str(extent)+'_'+str(year)+'_processing_variables.csv')
