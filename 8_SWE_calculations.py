@@ -358,8 +358,12 @@ for a in range(len(subbasin)):
 
     # Export key numbers 
     if glaciers == 'Y':
+        path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)
+        os.makedirs(path, exist_ok=True) 
         os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'/')
     else:
+        path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)
+        os.makedirs(path, exist_ok=True)
         os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'/')
     mean_Depth=pd.DataFrame(list(zip(phases,mean_Depth)),columns=['Survey','Mean_snow_depth_m'])
     mean_Depth.to_csv(str(subbasin[a])+'_'+str(year)+'_Mean_snow_depth.csv')
