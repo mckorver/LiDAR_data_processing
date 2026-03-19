@@ -4,8 +4,8 @@
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-phase='P3' # Enter survey phase. NOTE only one phase can be run at the time in this script
-phase_index=2 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
+phase='P1' # Enter survey phase. NOTE only one phase can be run at the time in this script
+phase_index=0 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
 
 import numpy as np
 import pyrsgis
@@ -28,6 +28,7 @@ year = var['year'][0]
 drive = var['drive'][0]
 lidar = var['lidar'][0]
 resolution2 = var['resolution2'][0]
+date = var['date'][0]
 BEversion = var['BEversion'][0]
 CANversion = var['CANversion'][0]
 glaciers = var['glaciers'][0]
@@ -266,4 +267,4 @@ if lakemodel == 'Y':
     pyrsgis.raster.export(SD_out, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif')
 
 # Save processing variables
-var.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Metadata/'+str(extent)+'_'+str(year)+'_processing_variables.csv')
+var.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Metadata/'+str(extent)+'_'+str(year)+'_processing_variables_'+str(date)+'.csv', index = False)

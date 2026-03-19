@@ -20,6 +20,7 @@ year = var['year'][0]
 drive = var['drive'][0]
 lidar = var['lidar'][0]
 resolution1 = var['resolution1'][0]
+date = var['date'][0]
 BEversion = var['BEversion'][0]
 glaciers = var['glaciers'][0]
 glaciermodel = var['glaciermodel'][0]
@@ -253,4 +254,4 @@ for n in range(len(phases)):
         pyrsgis.raster.export(Depth_filled[n], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif')
 
 # Save processing variables
-var.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Metadata/'+str(extent)+'_'+str(year)+'_processing_variables.csv')
+var.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Metadata/'+str(extent)+'_'+str(year)+'_processing_variables_'+str(date)+'.csv', index = False)

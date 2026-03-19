@@ -1,15 +1,4 @@
 
-# ACTION REQUIRED BELOW
-watershed='CRU' # Enter prefix for watershed of interest (ENG/CRU/TSI/MV)
-years=['2021','2022','2023','2024','2025'] # Enter year of interest
-phases=[['P1','P2','P3','P4','P5'],['P1','P2','P3','P4'],['P1','P2','P3','P4','P5'],['P1'],['P1','P2','P3']] # Enter survey phases ('P1','P2', etc.) for each year
-modelversion=2
-BEversion=2 # Enter Bare Earth version number.
-CANversion = 2 # Enter Canopy version number
-resolution=1 # Enter resolution in meters
-drive = 'K'
-lidar = 'ACO' # Enter 'ACO' for a survey by plane or 'RPAS' for a survey by drone
-
 # Import packages
 import rasterio
 import os
@@ -18,6 +7,42 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import MinMaxScaler
+import joblib
+
+# Import processing variables
+var = pd.read_csv('K:/LiDAR_data_processing/ACO/Density_modelling/ML_model_processing_variables.csv', dtype={'years':str, 'resolution1':str, 'BEversion':str, 'CANversion':str, 'DENSversion':str})
+watershed = var['watershed'][0]
+drive = var['drive'][0]
+lidar = var['lidar'][0]
+resolution1 = var['resolution1'][0]
+BEversion = var['BEversion'][0]
+CANversion = var['CANversion'][0]
+DENSversion = var['DENSversion'][0]
+def append_fun(a,b):
+    x = var[b][var[b].notna()]
+    for n in range(len(x)):
+        y = x[n]
+        if isinstance(y, float):
+            a.append(int(y))
+        else:
+            a.append(y)
+years=[]
+predictors = []
+phase=[]
+append_fun(years,'years')
+append_fun(predictors,'predictors')
+append_fun(phase,'phases')
+phases=[]
+for n in range(len(phase)):
+    a=[]
+    for m in range(phase[n]):
+        x='P'+str(m+1)
+        a.append(x)
+    phases.append(a)
 
 ## QAQC field data
 datetimes_field=[]
@@ -80,27 +105,23 @@ df.loc[(df['manual_remove']=='Y'), 'flag'] = 'manual'
 df.loc[(df['density']>0.8)|(df['density']<0.1), 'flag'] = 'range'
 df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
 filt=df[(df['flag']=='AV')]
-
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(modelversion))
-df.to_csv('Field_data_'+str(watershed)+'_v2.csv',index=False)
-filt.to_csv('Field_data_'+str(watershed)+'_v2_filtered.csv',index=False)
 del datetimes_field,datetimes_aco,eastings,northings,depths,cores,densities,manual_remove,field_phases
 
 ## Import LiDAR derived input variables and sample for field locations
 # Import Bare Earth metrics    
-os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution)+'m/')     
-elevations = rasterio.open(str(watershed)+'_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif')
-slope = rasterio.open(str(watershed)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif')
-curvature = rasterio.open(str(watershed)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif')
-aspect = rasterio.open(str(watershed)+'_Aspect_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif')
-northness = rasterio.open(str(watershed)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif')
-eastness = rasterio.open(str(watershed)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution)+'m.tif')
+os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/')     
+elevations = rasterio.open(str(watershed)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif')
+slope = rasterio.open(str(watershed)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif')
+curvature = rasterio.open(str(watershed)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif')
+aspect = rasterio.open(str(watershed)+'_Aspect_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif')
+northness = rasterio.open(str(watershed)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif')
+eastness = rasterio.open(str(watershed)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif')
 
 # Import canopy metrics
-os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution)+'m/')    
-canopy_density = rasterio.open(str(watershed)+'_CD_v'+str(BEversion)+'_'+str(resolution)+'m.tif')
-canopy_cover = rasterio.open(str(watershed)+'_CC_v'+str(BEversion)+'_'+str(resolution)+'m.tif')
-canopy_height = rasterio.open(str(watershed)+'_CH_v'+str(BEversion)+'_'+str(resolution)+'m.tif')
+os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/')    
+canopy_density = rasterio.open(str(watershed)+'_CD_v'+str(BEversion)+'_'+str(resolution1)+'m.tif')
+canopy_cover = rasterio.open(str(watershed)+'_CC_v'+str(BEversion)+'_'+str(resolution1)+'m.tif')
+canopy_height = rasterio.open(str(watershed)+'_CH_v'+str(BEversion)+'_'+str(resolution1)+'m.tif')
 
 # Import modelled meteo parameters and sample metrics at field locations
 s_elevations=[]
@@ -124,7 +145,7 @@ all_phases=[]
 all_months=[]
 
 for a in range(len(years)):
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(years[a])+'/Output/resolution_'+str(resolution)+'m/')
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(years[a])+'/Output/resolution_'+str(resolution1)+'m/')
     for b in range(len(phases[a])):
         year=years[a]
         phase=phases[a][b]
@@ -230,11 +251,65 @@ final=pd.DataFrame({"year":all_years,"phase":all_phases,"month":np.concatenate(a
 final['season']=np.where(np.isin(final['month'], [3,4]),"early","late")
 final=final.drop(columns=['aspect_lidar'])
 
-final_long=final.melt(id_vars=['year','phase','month','season','easting_m','northing_m','density_gcm3'],
-                      var_name='variable',value_name='value')
+# Prepare testing and training data for RF model
+y=np.array(final['density_gcm3'])
+variables=[]
+for n in range(len(predictors)):
+    x = np.array(final[predictors[n]])
+    variables.append(x)
 
+# Normalise input data
+all_scalers=[]
+for n in range(len(variables)):
+    x=variables[n]
+    x=x.reshape(len(x),1)
+    scaler = MinMaxScaler()
+    X_normalized = scaler.fit_transform(x)
+    X_normalized=X_normalized.reshape(len(X_normalized),)
+    variables[n]=X_normalized
+    all_scalers.append(scaler)
+    
+# Reformat data
+X=np.transpose(variables)
+X_train,X_test,Y_train,Y_test=train_test_split(X,y,test_size=0.2)
+
+# Create RF model
+model_rf = RandomForestRegressor(n_estimators=500,max_depth=5,min_samples_split=20,min_samples_leaf=10,max_features=0.3,n_jobs=-1,random_state=12345)
+model_rf.fit(X_train, Y_train)
+pred_test_rf = model_rf.predict(X_test)
+rmse_rf=np.sqrt(mean_squared_error(Y_test,pred_test_rf))
+syst_error=np.mean(pred_test_rf-Y_test)
+rand_error=np.std(pred_test_rf-Y_test)
+
+# Output ---------------------------------------------------------------------------------------------------------------
+# Save field data, filtered field data, and model input variables (field data linked to lidar metrics)
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion))
+final.to_csv('Input_variables_'+'v'+str(DENSversion)+'.csv',index=False)
+df.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'.csv',index=False)
+filt.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_filtered.csv',index=False)
+
+# Save RF model
+joblib.dump(model_rf, 'RF_density_model_'+str(watershed)+'_v'+str(DENSversion)+'.joblib')
+
+# Export normalization scalers
+for n in range(len(all_scalers)):
+    scaler=all_scalers[n]
+    joblib.dump(scaler, 'scaler'+str(n+1)+'.pkl')
+
+# Export error values
+all_errors= pd.DataFrame({'rmse':[rmse_rf],'syst_error':[syst_error],'rand_error':[rand_error]})
+all_errors.to_csv('model_error_values_v'+str(DENSversion)+'.csv')
+
+# Save processing variables
+var.to_csv(str(watershed)+'_ML_model_processing_variables_v'+str(DENSversion)+'.csv')
+
+# Plot regressions between predictor variables and snow density (dependent variable)
 # Calculate R-squared using scipy.stats.linregress
-# The function returns slope, intercept, r_value, p_value, std_err
+lst = ['year','phase','month','season','easting_m','northing_m','density_gcm3']
+lst.extend(predictors)
+final_long=final[lst]
+final_long=final_long.melt(id_vars=['year','phase','month','season','easting_m','northing_m','density_gcm3'],
+                      var_name='variable',value_name='value')
 variables=final_long['variable'].unique()
 R2s=[]
 for n in (variables):
@@ -247,7 +322,7 @@ g = sns.lmplot(
     data=final_long,      # Your DataFrame
     x="value",            # X-axis variable
     y="density_gcm3",
-    hue="season",     # Y-axis variable
+    #hue="season",     # Y-axis variable
     col="variable",       # Variable for columns (facets)
     col_wrap=4,
     sharex=False,                
@@ -257,8 +332,7 @@ g = sns.lmplot(
 for n in range(len(variables)):
     ax=g.axes[n]
     ax.text(0.05, 0.9, R2s[n], transform=ax.transAxes, fontsize=12, bbox=dict(facecolor='white', alpha=0.5))
-plt.show()
+plt.savefig(
+    f"{drive}:/LiDAR_data_processing/{lidar}/Density_modelling/{watershed}/ML_density_model/v{DENSversion}/"
+    f"Regression_plots_v{DENSversion}.png",bbox_inches='tight', pad_inches=0.1)
 
-# Export sampled data
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(modelversion))
-final.to_csv('Input_variables_'+'_v'+str(modelversion)+'.csv',index=False)

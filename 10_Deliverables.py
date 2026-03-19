@@ -100,9 +100,9 @@ cols = cols[-1:] + cols[:-1]
 cols = cols[-1:] + cols[:-1]
 sum_table = df1[cols]
 if glaciers == 'Y':
-    sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Summary_table_'+str(year)+'_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv',index=False)
+    sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Summary_table_'+str(extent)+'_'+str(year)+'_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv',index=False)
 else:
-    sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Summary_table_'+str(year)+'_lakemodel'+str(lakemodel)+'.csv',index=False)
+    sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Summary_table_'+str(extent)+'_'+str(year)+'_lakemodel'+str(lakemodel)+'.csv',index=False)
 del df1,cols
 
 # Create an elevation banded summary table
@@ -137,9 +137,9 @@ for a in range(len(subbasin)):
     df_elev.append(x)
 df_elev = pd.concat(df_elev)
 if glaciers == 'Y':
-    df_elev.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Elevation_table_'+str(subbasin[a])+'_'+str(year)+'_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv')
+    df_elev.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Elevation_table_'+str(extent)+'_'+str(year)+'_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.csv')
 else:
-    df_elev.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Elevation_table_'+str(subbasin[a])+'_'+str(year)+'_lakemodel'+str(lakemodel)+'.csv')
+    df_elev.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Elevation_table_'+str(extent)+'_'+str(year)+'_lakemodel'+str(lakemodel)+'.csv')
 
 # Update the 'Yearly_comparison' csv
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/')
@@ -161,6 +161,8 @@ df1.to_csv(str(watershed)+'/All_years/Yearly_comparison_old.csv',index=False)
 ### PLOTS -------------------------------------------------------------------------
 df_plot = df_elev.reset_index()
 df_plot['watershed'].loc[df_plot['watershed']=="RC"] = 'Russell Creek'
+df_plot['watershed'].loc[df_plot['watershed']=="CRU"] = 'Cruickshank'
+df_plot['elev_band'].loc[df_plot['elev_band']==150] = '100-200'
 df_plot['elev_band'].loc[df_plot['elev_band']==250] = '200-300'
 df_plot['elev_band'].loc[df_plot['elev_band']==350] = '300-400'
 df_plot['elev_band'].loc[df_plot['elev_band']==450] = '400-500'
@@ -176,14 +178,19 @@ df_plot['elev_band'].loc[df_plot['elev_band']==1350] = '1300-1400'
 df_plot['elev_band'].loc[df_plot['elev_band']==1450] = '1400-1500'
 df_plot['elev_band'].loc[df_plot['elev_band']==1550] = '1500-1600'
 df_plot['elev_band'].loc[df_plot['elev_band']==1650] = '1600-1700'
+df_plot['elev_band'].loc[df_plot['elev_band']==1750] = '1700-1800'
+df_plot['elev_band'].loc[df_plot['elev_band']==1850] = '1800-1900'
+df_plot['elev_band'].loc[df_plot['elev_band']==1950] = '1900-2000'
+df_plot['elev_band'].loc[df_plot['elev_band']==2050] = '2000-2100'
 
+ylist=list(df_plot['elev_band'].unique())
 sns.set_style('whitegrid')
-g = sns.catplot(data=df_plot,x='elev_band',y='SWE_mean_mm',col='watershed',hue='date',kind='bar',aspect=1.5)
-g.set_axis_labels("Elevation (m)", "SWE (mm)", fontsize = 12)
-g.set_xticklabels(rotation=90)
-g.set_titles(col_template="{col_name}",font_size = 12)
+g = sns.catplot(data=df_plot,y='elev_band',x='SWE_mean_mm',col='watershed',col_wrap=2,hue='date',kind='bar',order=ylist[::-1])
+g.set_axis_labels("SWE (mm)","Elevation (m)", fontsize = 12)
+g.set_xticklabels(rotation=0)
+g.set_titles(col_template="{col_name}",size=14)
 sns.move_legend(
-    g,"upper left", bbox_to_anchor=(.1,.9), title="", fontsize="large")
+    g,"upper left", bbox_to_anchor=(.7,.1), title="", fontsize="large")
 plt.savefig(
     f"{drive}:/LiDAR_data_processing/{lidar}/Final_products/{watershed}/{year}/Figures_tables/{date}/"
     f"Elevation_meanSWE.png",bbox_inches='tight', pad_inches=0.1)
