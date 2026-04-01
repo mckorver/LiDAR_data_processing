@@ -16,7 +16,7 @@ from pathlib import Path
 
 # Import input data -------------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'DENSversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -24,10 +24,10 @@ drive = var['drive'][0]
 lidar = var['lidar'][0]
 resolution2 = var['resolution2'][0]
 BEversion = var['BEversion'][0]
+DENSversion = var['DENSversion'][0]
 glaciers = var['glaciers'][0]
 glaciermodel = var['glaciermodel'][0]
 lakemodel = var['lakemodel'][0]
-rand_model_error = var['rand_model_error'][0]
 phases = []
 subbasin = []
 def append_fun(a,b):
@@ -40,6 +40,9 @@ def append_fun(a,b):
             a.append(y)
 append_fun(phases,'phases')
 append_fun(subbasin,'subbasin')
+
+var2 = pd.read_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/model_error_values_v'+str(DENSversion)+'.csv')
+rand_model_error = var2['rand_error'][0]*1000
 
 # Import watershed mask (without lakes or glaciers)
 if lakemodel == 'Y' and (glaciermodel == 'Y' or glaciers == 'N'):

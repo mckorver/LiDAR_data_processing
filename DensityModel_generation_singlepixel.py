@@ -10,7 +10,9 @@ from scipy import stats
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import RandomizedSearchCV
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.tree import plot_tree
 import joblib
 
 # Import processing variables
@@ -49,6 +51,7 @@ datetimes_field=[]
 datetimes_aco=[]
 eastings=[]
 northings=[]
+plot_ids=[]
 depths=[]
 cores=[]
 densities=[]
@@ -66,6 +69,8 @@ for a in range(len(years)):
         easting=easting.reshape(len(easting),)
         northing=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['northing_m'])).astype('float64')
         northing=northing.reshape(len(northing),)
+        plot_id=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['plot_id']))
+        plot_id=plot_id.reshape(len(plot_id),)
         depth=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['snow_depth'])).astype('float64')
         depth=depth.reshape(len(depth),)
         core=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['core_length_final'])).astype('float64')
@@ -80,6 +85,7 @@ for a in range(len(years)):
         datetimes_aco.append(datetime_l)
         eastings.append(easting)
         northings.append(northing)
+        plot_ids.append(plot_id)
         depths.append(depth)
         cores.append(core)
         densities.append(density)
@@ -87,7 +93,7 @@ for a in range(len(years)):
         field_phases.append(field_phase)
 
 df=pd.DataFrame({"phase":np.concatenate(field_phases),"datetime_field":np.concatenate(datetimes_field),"datetime_aco":np.concatenate(datetimes_aco),
-                 "easting_m":np.concatenate(eastings),"northing_m":np.concatenate(northings),
+                 "easting_m":np.concatenate(eastings),"northing_m":np.concatenate(northings),"plot_id":np.concatenate(plot_ids),
                  "snow_depth":np.concatenate(depths),"core_depth":np.concatenate(cores),
                  "density":np.concatenate(densities), "manual_remove":np.concatenate(manual_remove)})
 df['time_gap_hr']=df['datetime_field']-df['datetime_aco']
@@ -104,7 +110,7 @@ df.loc[(df['time_gap_hr']>60), 'flag'] = 'time'
 df.loc[(df['manual_remove']=='Y'), 'flag'] = 'manual'
 df.loc[(df['density']>0.8)|(df['density']<0.1), 'flag'] = 'range'
 df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
-filt=df[(df['flag']=='AV')]
+filt=df.loc[(df['flag']=='AV')]
 del datetimes_field,datetimes_aco,eastings,northings,depths,cores,densities,manual_remove,field_phases
 
 ## Import LiDAR derived input variables and sample for field locations
@@ -253,12 +259,13 @@ final=final.drop(columns=['aspect_lidar'])
 
 # Prepare testing and training data for RF model
 y=np.array(final['density_gcm3'])
+variables1=final.iloc[:,7:9].values
 variables=[]
 for n in range(len(predictors)):
     x = np.array(final[predictors[n]])
     variables.append(x)
 
-# Normalise input data
+# Normalise input data[
 all_scalers=[]
 for n in range(len(variables)):
     x=variables[n]
@@ -274,12 +281,37 @@ X=np.transpose(variables)
 X_train,X_test,Y_train,Y_test=train_test_split(X,y,test_size=0.2)
 
 # Create RF model
-model_rf = RandomForestRegressor(n_estimators=500,max_depth=5,min_samples_split=20,min_samples_leaf=10,max_features=0.3,n_jobs=-1,random_state=12345)
-model_rf.fit(X_train, Y_train)
-pred_test_rf = model_rf.predict(X_test)
+param_grid = {'n_estimators': [int(x) for x in np.linspace(start = 100, stop = 500, num = 100)],
+              'max_depth': [int(x) for x in np.linspace(start = 1, stop = 10, num = 10)],
+              'min_samples_split':[int(x) for x in np.linspace(start = 2, stop = 30, num = 29)],
+              'min_samples_leaf':[int(x) for x in np.linspace(start = 1, stop = 10, num = 10)],
+              'max_features':[0.3],
+              'bootstrap':[True,False]}
+
+model_rf = RandomForestRegressor()
+rf_RandomGrid = RandomizedSearchCV(estimator = model_rf, param_distributions = param_grid, verbose=2, n_jobs = -1, n_iter=100, random_state=12345)
+rf_RandomGrid.fit(X_train, Y_train)
+score_train=rf_RandomGrid.score(X_train,Y_train)
+score_test=rf_RandomGrid.score(X_test,Y_test)
+hyperparams=rf_RandomGrid.best_params_
+pred_test_rf = rf_RandomGrid.predict(X_test)
 rmse_rf=np.sqrt(mean_squared_error(Y_test,pred_test_rf))
 syst_error=np.mean(pred_test_rf-Y_test)
 rand_error=np.std(pred_test_rf-Y_test)
+model_rf = rf_RandomGrid.best_estimator_
+
+# Plot an example decision tree
+tree_to_plot = model_rf.estimators_[1]
+plt.figure(figsize=(20, 10))
+plot_tree(tree_to_plot, feature_names=predictors, filled=True, rounded=True, fontsize=10)
+plt.title("Decision Tree from Random Forest")
+plt.show()
+
+# Extract feature importances
+importances = model_rf.feature_importances_
+feature_names = predictors
+feature_importance_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances})
+feature_importance_df = feature_importance_df.sort_values(by='Importance', ascending=False)
 
 # Output ---------------------------------------------------------------------------------------------------------------
 # Save field data, filtered field data, and model input variables (field data linked to lidar metrics)
@@ -288,20 +320,19 @@ final.to_csv('Input_variables_'+'v'+str(DENSversion)+'.csv',index=False)
 df.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'.csv',index=False)
 filt.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_filtered.csv',index=False)
 
-# Save RF model
+# Save RF model hyperparameters, error values, and processing variables
 joblib.dump(model_rf, 'RF_density_model_'+str(watershed)+'_v'+str(DENSversion)+'.joblib')
+hyperparams=pd.DataFrame([hyperparams])
+hyperparams.to_csv('Hyperparameters_'+'v'+str(DENSversion)+'.csv',index=False)
+feature_importance_df.to_csv('Feature_importance_'+'v'+str(DENSversion)+'.csv',index=False)
+all_errors= pd.DataFrame({'rmse':[rmse_rf],'syst_error':[syst_error],'rand_error':[rand_error]})
+all_errors.to_csv('model_error_values_v'+str(DENSversion)+'.csv')
+var.to_csv(str(watershed)+'_ML_model_processing_variables_v'+str(DENSversion)+'.csv')
 
 # Export normalization scalers
 for n in range(len(all_scalers)):
     scaler=all_scalers[n]
     joblib.dump(scaler, 'scaler'+str(n+1)+'.pkl')
-
-# Export error values
-all_errors= pd.DataFrame({'rmse':[rmse_rf],'syst_error':[syst_error],'rand_error':[rand_error]})
-all_errors.to_csv('model_error_values_v'+str(DENSversion)+'.csv')
-
-# Save processing variables
-var.to_csv(str(watershed)+'_ML_model_processing_variables_v'+str(DENSversion)+'.csv')
 
 # Plot regressions between predictor variables and snow density (dependent variable)
 # Calculate R-squared using scipy.stats.linregress

@@ -4,7 +4,6 @@
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-phase='P1' # Enter survey phase. NOTE only one phase can be run at the time in this script
 phase_index=0 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
 
 import numpy as np
@@ -36,19 +35,74 @@ glaciermodel = var['glaciermodel'][0]
 lakemodel = var['lakemodel'][0]
 DENSversion = var['DENSversion'][0]
 bias_correction_dens = []
-x = var['bias_correction_dens'][var['bias_correction_dens'].notna()]
-for n in range(len(x)):
-    a = x[n]
-    bias_correction_dens.append(a)
+phases=[]
+days_in_season=[]
+def append_fun(a,b):
+    x = var[b][var[b].notna()]
+    for n in range(len(x)):
+        y = x[n]
+        if isinstance(y, float):
+            a.append(int(y))
+        else:
+            a.append(y)
+append_fun(bias_correction_dens,'bias_correction_dens')
+append_fun(phases,'phases')
+append_fun(days_in_season,'days_in_season')
+phase=phases[phase_index]
+day_in_season=days_in_season[phase_index]
 
 # Import snow density model
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion))
-rf = joblib.load('RF_density_model_'+str(watershed)+'.joblib')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
+model_var = pd.read_csv(str(watershed)+'_ML_model_processing_variables_v'+str(DENSversion)+'.csv')
+predictors=[]
+x = model_var['predictors'][model_var['predictors'].notna()]
+for n in range(len(x)):
+    a = x[n]
+    predictors.append(a)
+rf = joblib.load('RF_density_model_'+str(watershed)+'_v'+str(DENSversion)+'.joblib')
 all_scalers=[]
-for n in range(1,10):
+for n in range(1,len(predictors)):
     scaler = joblib.load('scaler'+str(n)+'.pkl')
     all_scalers.append(scaler)
 del scaler
+
+Files=[]
+for n in predictors:
+    if n == "snow_depth_m":
+        if glaciers == 'Y':
+            [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif', bands='all'))
+        else:
+            [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))  
+        Files.append(x)
+        rows=x.shape[0]
+        cols=x.shape[1]
+    elif n == "elevation_lidar":
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
+        Files.append(x)
+    elif n == "slope_lidar":
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
+        Files.append(x)
+    elif n == "curvature_lidar":
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
+        Files.append(x)
+    elif n == "eastness_lidar":
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
+        Files.append(x)
+    elif n == "northness_lidar":
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
+        Files.append(x)
+    elif n == "Xt_model":
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution2)+'m/Distributed_Xt_'+str(extent)+'_'+str(year)+'_'+str(phase)+'.tif', bands='all'))
+        Files.append(x)
+    elif n == "canopy_cover_lidar":
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_CC_v'+str(CANversion)+'_'+str(resolution2)+'m.tif', bands='all'))
+        Files.append(x)
+    elif n == "canopy_height_lidar":
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_CH_v'+str(CANversion)+'_'+str(resolution2)+'m.tif', bands='all'))
+        Files.append(x)
+    elif n == "day_in_season":
+        x=np.full((rows,cols),day_in_season)
+        Files.append(x)
 
 # Import model input data (bare earth - derived and Canopy data):
 os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m')
@@ -131,7 +185,7 @@ for n in range(len(input)):
     Surface_Characteristics.append(x)
 del n,x,y
 
-# Organise input data for each survey
+# Organise input data
 input_parameters=[SD.astype('float64'),Surface_Characteristics[0].astype('float64'),Surface_Characteristics[5].astype('float64'),Surface_Characteristics[6].astype('float64'),Surface_Characteristics[3].astype('float64'),Surface_Characteristics[4].astype('float64'),Surface_Characteristics[1].astype('float64'),Xt.astype('float64'),Surface_Characteristics[2].astype('float64')]
 del Surface_Characteristics,Xt
 
