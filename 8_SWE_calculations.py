@@ -211,10 +211,10 @@ if glaciermodel == 'Y':
         del x_variables_inference,k,model_inference_eastness,model_inference_northness,model_inference_slope,MLR_model
                 
         # Cap any anomylously high or low modelled values
-        errors=np.where(SWE_flattened<0)
-        SWE_flattened[errors]=np.nan
-        errors=np.where(SWE_flattened>5000)
-        SWE_flattened[errors]=5000    
+        #errors=np.where(SWE_flattened<0)
+        #SWE_flattened[errors]=np.nan
+        #errors=np.where(SWE_flattened>5000)
+        #SWE_flattened[errors]=5000    
                 
         # Re-enter nans and reshape results
         nans=np.where(model_inference_elevation==-9999)

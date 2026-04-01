@@ -8,6 +8,9 @@ import numpy as np
 import pandas as pd
 import pyrsgis
 import geopandas
+import pyrsgis
+import rasterio
+import rasterio.fill
 
 # Import processing variables
 var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
@@ -118,7 +121,7 @@ for n in range(len(phases)):
 
 # region # EXTENT AND CLIPPING ---------------------------------------------------------------
 # set projection and nodata value of output
-projection="EPSG:32609 - WGS 84 / UTM zone 9N"
+projection="EPSG:32610 - WGS 84 / UTM zone 10N"
 nodata = -9999
 phase = 'P3'
 filename = '25_3010_03_TsitikaWS_DEM_1m_NGF_WGS84_UTM09_Ellips_FullExtent.tif'
@@ -190,5 +193,60 @@ for m in range(len(inputs)):
         fn_in = str(inputs[m])+str(watershed)+'_'+str(year)+'_'+str(phases[n])+'.tif'
         fn_out = str(inputs[m])+str(extent)+'_'+str(year)+'_'+str(phases[n])+'.tif'
         gdal.Warp(fn_out, fn_in, outputBounds=bounds, width=cols, height=rows, dstSRS=projection, dstNodata=nodata)
+# endregion
 
+# region # gapfill small areas with linear interpolation (used for Canopy processing) ----------------------------------------------------------
+# Import watershed mask
+[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_'+str(resolution1)+'m.tif'))
+nans=np.where(WS<1)
+WS[nans]=np.nan
+
+input=[]
+os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m')
+CanopyFiles=[str(watershed)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',str(watershed)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',str(watershed)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m.tif']
+for n in range(len(CanopyFiles)):
+    [R,x]=np.array(pyrsgis.raster.read(CanopyFiles[n], bands='all'))
+    nans=np.where(x<0)
+    x[nans]=np.nan
+    input.append(x)
+
+# Determine areas where interpolation is required (i.e. within the boundary of the watershed, not in lakes or glaciers) and set these areas to 0 and everything else to 1
+output = []    
+for x in range(len(input)):
+    file = input[x]
+    area_mask_flattened=np.ndarray.flatten(WS)
+    file_flattened=np.ndarray.flatten(file)
+    interpolation_areas=(file_flattened/file_flattened).astype('float64')
+    a=np.ndarray.flatten(np.array(np.where(area_mask_flattened==1))).astype('float64')
+    b=np.ndarray.flatten(np.argwhere(np.isnan(file_flattened))).astype('float64')
+    k=(np.intersect1d(a,b))
+    k=k.astype('int64')
+    interpolation_areas[k]=0
+    nans=np.argwhere(np.isnan(interpolation_areas))
+    interpolation_areas[nans]=1
+    dims=np.shape(WS)
+    interpolation_areas_2d=np.reshape(interpolation_areas,(dims[0],dims[1]))
+    
+    filled=rasterio.fill.fillnodata(file,interpolation_areas_2d) #enter 'interpolation_areas_2d' if using mask
+    nans=np.where(filled<0)
+    filled[nans]=np.nan
+    output.append(filled)
+
+lakes = np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_lakes_'+str(resolution1)+'m.tif'))
+lakes = lakes[1]
+nans=np.where(lakes<1)
+lakes[nans]=np.nan
+
+for n in range(len(output)):
+    x=output[n]
+    nulls=np.where(lakes==1)
+    x[nulls]=0
+    output[n]=x
+
+# Output ---------------------------------------------------------------------------------------
+os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m')
+CanopyFiles2=[str(watershed)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m_filled.tif',str(watershed)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m_filled.tif',str(watershed)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m_filled.tif']
+pyrsgis.export(output[0],R,filename=CanopyFiles2[0])
+pyrsgis.export(output[1],R,filename=CanopyFiles2[1])
+pyrsgis.export(output[2],R,filename=CanopyFiles2[2])
 # endregion
