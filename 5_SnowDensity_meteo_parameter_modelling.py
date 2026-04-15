@@ -62,7 +62,7 @@ WSlow_elev=int(np.array(pd.read_csv('Metadata_'+str(extent)+'_'+str(year)+'.csv'
 # Import weather station data
 Tair_up = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['Tair_up']))
 Tair_low = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['Tair_low']))
-precip_pipe = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['PC_low_mm']))
+precip_pipe = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['PC_up_mm']))
 DateTime=np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv',usecols=['DateTime']))
 
 # Reformat and check total precip data
@@ -293,13 +293,13 @@ Total_snowfall_save.to_csv("S_1m_intervals_"+str(extent)+"_"+str(year)+".csv", i
 
 Xt_plot = Xt_save.plot(kind='line',x='Elevation',color=['red','blue','green'])
 Xt_plot.set_ylabel('Xt')
-Xt_plot.figure.savefig('Xt_1m_intervals_CRU_'+str(year)+'.png')
+Xt_plot.figure.savefig('Xt_1m_intervals_'+str(extent)+'_'+str(year)+'.png')
 PDD_plot = PDD_sum_save.plot(kind='line',x='Elevation',color=['red','blue','green'])
 PDD_plot.set_ylabel('PDD')
-PDD_plot.figure.savefig('PDD_1m_intervals_CRU_'+str(year)+'.png')
+PDD_plot.figure.savefig('PDD_1m_intervals_'+str(extent)+'_'+str(year)+'.png')
 Total_snowfall_plot = Total_snowfall_save.plot(kind='line',x='Elevation',color=['red','blue','green'])
 Total_snowfall_plot.set_ylabel('Total snowfall')
-Total_snowfall_plot.figure.savefig('Total_snowfall_1m_intervals_CRU_'+str(year)+'.png')
+Total_snowfall_plot.figure.savefig('Total_snowfall_1m_intervals_'+str(extent)+'_'+str(year)+'.png')
 
 # Spatially distribute results according to elevation
 # Distribute Xt

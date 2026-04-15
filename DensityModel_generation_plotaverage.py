@@ -108,9 +108,11 @@ df=pd.DataFrame({"phase":np.concatenate(field_phases),"datetime_field":np.concat
                  "plot_id":np.concatenate(plot_ids),"plot_type":np.concatenate(plot_types),"cardinal":np.concatenate(card_dirs),
                  "snow_depth":np.concatenate(depths),"core_depth":np.concatenate(cores),
                  "density":np.concatenate(densities), "manual_remove":np.concatenate(manual_remove)})
+df['datetime_field'] = df['datetime_field'].astype('datetime64[ns]')
+df['datetime_aco'] = df['datetime_aco'].astype('datetime64[ns]')
 df['time_gap_hr']=df['datetime_field']-df['datetime_aco']
 df['time_gap_hr'] = df['time_gap_hr'].dt.total_seconds()/3600
-df['time_gap_hr'] = df['time_gap_hr'].abs().astype('int64')
+df['time_gap_hr'] = df['time_gap_hr'].abs()
 df['year'] = df['datetime_field'].dt.year.astype('string')
 df['day1'] = pd.to_datetime(df['year']+"-03-01 12:00:00")
 df['day_in_season'] = df['datetime_aco'] - df['day1']
@@ -126,34 +128,33 @@ df.loc[(df['density']>0.8)|(df['density']<0.1), 'flag'] = 'range'
 df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
 filt=df.loc[(df['flag']=='AV')]
 
-# Fix some issues with plot types
-grouped=filt.drop(columns=['snow_depth','flag','manual_remove','time_gap_hr','core_depth'])
-grouped.loc[grouped['plot_type'].isna(), 'plot_type'] = 'Cardinal 10 m'
-grouped.loc[grouped['plot_type']=='Cardinal 30 m', 'plot_type'] = 'Cardinal 10 m'
-grouped=grouped.loc[(grouped['plot_type']=='Cardinal 10 m')]
+# Separate between cardinal field plots and point field plots
+temp=filt.drop(columns=['snow_depth','flag','manual_remove','time_gap_hr'])
+#grouped.loc[grouped['plot_type'].isna(), 'plot_type'] = 'Cardinal 10 m'
+#grouped.loc[grouped['plot_type']=='Cardinal 30 m', 'plot_type'] = 'Cardinal 10 m'
+grouped=temp.loc[(temp['plot_type']=='Cardinal 10 m')]
+#points=temp.loc[(temp['plot_type']=='Point')]
+#points=points[['phase','plot_id','year','easting_m','northing_m','density','snow_depth_m','day_in_season']].reset_index()
 
 # Get centre coordinates
 grouped=grouped[['easting_m','northing_m','phase','cardinal','plot_id','year','density','snow_depth_m','day_in_season']]
-grouped['easting_m']=np.where(grouped['cardinal']=='W',grouped['easting_m']+10,grouped['easting_m'])
-grouped['easting_m']=np.where(grouped['cardinal']=='E',grouped['easting_m']-10,grouped['easting_m'])
-grouped['northing_m']=np.where(grouped['cardinal']=='N',grouped['northing_m']-10,grouped['northing_m'])
-grouped['northing_m']=np.where(grouped['cardinal']=='S',grouped['northing_m']+10,grouped['northing_m'])
-grouped['northing_m']=np.where(grouped['cardinal']=='SW',grouped['northing_m']+10,grouped['northing_m'])
-grouped['easting_m']=np.where(grouped['cardinal']=='SW',grouped['easting_m']+10,grouped['easting_m'])
+grouped['easting_m']=np.where(grouped['cardinal']!='Centre',np.nan,grouped['easting_m'])
+grouped['northing_m']=np.where(grouped['cardinal']!='Centre',np.nan,grouped['northing_m'])
 grouped_final=grouped.groupby(['phase','plot_id','year']).mean().reset_index()
 
 # Save field data
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
 df.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'.csv',index=False)
 filt.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_filtered.csv',index=False)
-grouped.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_grouped.csv',index=False)
-del datetimes_field,datetimes_aco,eastings,northings,depths,cores,densities,manual_remove,field_phases
+grouped_final.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_grouped.csv',index=False)
+#points.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_points.csv',index=False)
+del datetimes_field,datetimes_aco,eastings,northings,depths,densities,manual_remove,field_phases
 
-## Import LiDAR derived input variables and sample for field locations
-file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/Input_variables_'+'v'+str(DENSversion)+'.csv')
+## Import LiDAR derived input variables and sample for GROUPED field locations
+file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv')
 if file.is_file():
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
-    grouped_final=pd.read_csv('Input_variables_'+'v'+str(DENSversion)+'.csv')
+    grouped_final=pd.read_csv('Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv')
     grouped_final['year'] = grouped_final['year'].astype(str)
 else:
     buffer_distance = 10 # buffer distance around centre point of cardinal plot
@@ -165,9 +166,9 @@ else:
             'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
             'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
             'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CD_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CC_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CH_v'+str(BEversion)+'_'+str(resolution1)+'m.tif']
+            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',
+            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',
+            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m.tif']
     for a in be_list:
         b=[]
         src = rasterio.open(a)
@@ -179,7 +180,7 @@ else:
             mask = rasterio.features.geometry_mask([buffer_poly],out_shape=src.shape,transform=src.transform,invert=False)
             data = src.read(1) # Read data and apply mask. Read first band
             sampled_values = data[~mask] # Extract only the masked pixels (where mask is False, i.e., inside buffer). Using ~mask to select True where the buffer is
-            sampled_value = sampled_values.mean() # Take the mean of all pixels within buffer
+            sampled_value = np.nanmean(sampled_values) # Take the mean of all pixels within buffer
             b.append(sampled_value)
         s_BE.append(b)
 
@@ -218,7 +219,81 @@ else:
     pd_meteo=pd.DataFrame(s_meteo,columns=['index','Xt_model','PDD_model','Snowfall_model']).set_index('index')
     grouped_final = pd.merge(grouped_final, pd_meteo, left_index=True, right_index=True, how='inner')
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
-    grouped_final.to_csv('Input_variables_'+'v'+str(DENSversion)+'.csv',index=False)
+    grouped_final.to_csv('Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv',index=False)
+
+## Import LiDAR derived input variables and sample for POINTS field locations
+file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/Input_variables_'+'v'+str(DENSversion)+'_points.csv')
+if file.is_file():
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
+    points=pd.read_csv('Input_variables_'+'v'+str(DENSversion)+'_points.csv')
+    points['year'] = points['year'].astype(str)
+else:
+    buffer_distance = 2 # buffer distance around centre point of cardinal plot
+    # Import Bare Earth metrics 
+    s_BE=[]
+    os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/')
+    be_list = ['DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
+            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
+            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
+            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
+            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
+            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',
+            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',
+            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m.tif']
+    for a in be_list:
+        b=[]
+        src = rasterio.open(a)
+        for x in range(len(points)):
+            coords = (points.at[x,'easting_m'], points.at[x,'northing_m'])
+            point = Point(coords)
+            buffer_poly = point.buffer(buffer_distance)
+            # Create a mask from the buffer geometry. geometry_mask returns True for outside, False for inside
+            mask = rasterio.features.geometry_mask([buffer_poly],out_shape=src.shape,transform=src.transform,invert=False)
+            data = src.read(1) # Read data and apply mask. Read first band
+            sampled_values = data[~mask] # Extract only the masked pixels (where mask is False, i.e., inside buffer). Using ~mask to select True where the buffer is
+            sampled_value = sampled_values.mean() # Take the mean of all pixels within buffer
+            b.append(sampled_value)
+        s_BE.append(b)
+
+    BE_inputs=['elevation_lidar','slope_lidar','curvature_lidar','northness_lidar','eastness_lidar','canopy_density_lidar','canopy_cover_lidar','canopy_height_lidar']
+    for x in range(len(BE_inputs)):
+        points[BE_inputs[x]] = s_BE[x]
+
+    # Import meteorological parameters
+    s_meteo=[]
+    meteo_list = ['Distributed_Xt_','Distributed_PDD_','Distributed_Snowfall_']
+    for m in range(len(years)):
+        list3=[]
+        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(years[m])+'/Output/resolution_'+str(resolution1)+'m/')
+        for n in range(len(phases[m])):
+            list2=[]
+            loc = points[(points['year'] == str(years[m])) & (points['phase'] == str(phases[m][n]))]
+            index=loc.index.tolist()
+            for b in index:
+                list1=[]
+                list1.append(b)
+                coords = (loc.at[b,'easting_m'], loc.at[b,'northing_m'])
+                point = Point(coords)
+                buffer_poly = point.buffer(buffer_distance)
+                # Create a mask from the buffer geometry. geometry_mask returns True for outside, False for inside
+                for a in meteo_list:
+                    src = rasterio.open(a+str(watershed)+'_'+str(years[m])+'_'+str(phases[m][n])+'.tif') 
+                    mask = rasterio.features.geometry_mask([buffer_poly],out_shape=src.shape,transform=src.transform,invert=False)
+                    data = src.read(1) # Read data and apply mask. Read first band
+                    sampled_values = data[~mask] # Extract only the masked pixels (where mask is False, i.e., inside buffer). Using ~mask to select True where the buffer is
+                    sampled_value = sampled_values.mean() # Take the mean of all pixels within buffer
+                    list1.append(sampled_value)
+                list2.append(list1)
+            list3.extend(list2)
+        s_meteo.extend(list3)
+
+    pd_meteo=pd.DataFrame(s_meteo,columns=['index','Xt_model','PDD_model','Snowfall_model']).set_index('index')
+    points = pd.merge(points, pd_meteo, left_index=True, right_index=True, how='inner')
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
+    points.to_csv('Input_variables_'+'v'+str(DENSversion)+'_points.csv',index=False)
+
+# Combine points and grouped data
+grouped_final=pd.concat([grouped_final,points])
 
 # Prepare testing and training data for RF model
 y=np.array(grouped_final['density'])
@@ -251,7 +326,7 @@ param_grid = {'n_estimators': [int(x) for x in np.linspace(start = 100, stop = 5
               'bootstrap':[True,False]}
 
 model_rf = RandomForestRegressor()
-rf_RandomGrid = RandomizedSearchCV(estimator = model_rf, param_distributions = param_grid, verbose=2, n_jobs = -1, n_iter=100, random_state=12345)
+rf_RandomGrid = RandomizedSearchCV(estimator = model_rf, param_distributions = param_grid, verbose=2, n_jobs = -1, n_iter=500, random_state=12345)
 rf_RandomGrid.fit(X_train, Y_train)
 score_train=rf_RandomGrid.score(X_train,Y_train)
 score_test=rf_RandomGrid.score(X_test,Y_test)

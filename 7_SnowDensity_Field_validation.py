@@ -53,8 +53,8 @@ for b in range(len(phases)):
     plot_id=plot_id.reshape(len(plot_id),)
     depth=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['snow_depth'])).astype('float64')
     depth=depth.reshape(len(depth),)
-    core=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['core_length_final'])).astype('float64')
-    core=core.reshape(len(core),)
+    #core=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['core_length_final'])).astype('float64')
+    #core=core.reshape(len(core),)
     density=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['density'])).astype('float64')
     density=density.reshape(len(density),)
     manual_rem=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['manual_remove']))
@@ -67,14 +67,14 @@ for b in range(len(phases)):
     northings.append(northing)
     depth_ids.append(plot_id)
     depths.append(depth)
-    cores.append(core)
+    #cores.append(core)
     densities.append(density)
     manual_remove.append(manual_rem)
     field_phases.append(field_phase)
 
 df=pd.DataFrame({"phase":np.concatenate(field_phases),"datetime_field":np.concatenate(datetimes_field),"datetime_aco":np.concatenate(datetimes_aco),
                  "easting_m":np.concatenate(eastings),"northing_m":np.concatenate(northings),"plot_id":np.concatenate(depth_ids),
-                 "snow_depth":np.concatenate(depths),"core_depth":np.concatenate(cores),
+                 "snow_depth":np.concatenate(depths),
                  "density":np.concatenate(densities), "manual_remove":np.concatenate(manual_remove)})
 df['time_gap_hr']=df['datetime_field']-df['datetime_aco']
 df['time_gap_hr'] = df['time_gap_hr'].dt.total_seconds()/3600
@@ -89,7 +89,7 @@ df['flag'] = 'AV'
 df.loc[(df['time_gap_hr']>60), 'flag'] = 'time'
 df.loc[(df['manual_remove']=='Y'), 'flag'] = 'manual'
 df.loc[(df['density']>0.8)|(df['density']<0.1), 'flag'] = 'range'
-df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
+#df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
 filt=df[(df['flag']=='AV')]
 
 Density_ids=[]
@@ -274,8 +274,8 @@ def plot(x, y, xerr, yerr, **kwargs):
 g = g.map(plot, 'Field_density_mean', 'Lidar_density_mean', 'Field_density_sd', 'Lidar_density_sd')
 def plot_one_to_one(x, y, **kwargs):
     ax = plt.gca()
-    min_val = 0.3
-    max_val = 0.5
+    min_val = 0.35
+    max_val = 0.65
     ax.plot([min_val, max_val], [min_val, max_val], linestyle='--',**kwargs)
 g = g.map(plot_one_to_one, 'Field_density_mean', 'Lidar_density_mean')
 for ax, name in zip(g.axes.flat, Density_field['survey']):
@@ -283,7 +283,7 @@ for ax, name in zip(g.axes.flat, Density_field['survey']):
     text_label = f"Mean diff:\n{value:.2f} g/cm3"
     # Add text using ax.text(x_pos, y_pos, text)
     # The coordinates (x, y) are in data units for that specific subplot
-    ax.text(0.33, maxvalue-0.95, text_label, fontsize=9, color='black', ha='left', va='center')
+    ax.text(0.40, maxvalue-0.95, text_label, fontsize=9, color='black', ha='left', va='center')
 g.set_xlabels("Mean Density (Field) [g*cm^-3]")
 g.set_ylabels("Mean Density (LiDAR) [g*cm^-3]")
 g.add_legend(title="Plot ID")

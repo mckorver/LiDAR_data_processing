@@ -197,7 +197,7 @@ for m in range(len(inputs)):
 
 # region # gapfill small areas with linear interpolation (used for Canopy processing) ----------------------------------------------------------
 # Import watershed mask
-[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_'+str(resolution1)+'m.tif'))
+[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Manual_corrections/'+str(extent)+'_Canopy_manual_corrections2.tif'))
 nans=np.where(WS<1)
 WS[nans]=np.nan
 
@@ -250,3 +250,19 @@ pyrsgis.export(output[0],R,filename=CanopyFiles2[0])
 pyrsgis.export(output[1],R,filename=CanopyFiles2[1])
 pyrsgis.export(output[2],R,filename=CanopyFiles2[2])
 # endregion
+
+## MERGE field data with field coordinates
+os.chdir(str(drive)+':/LiDAR_data_processing/Field_data/'+str(watershed)+'/'+str(year))
+merged=[]
+for n in phases:
+    gnss=pd.read_csv('GNSS_EGM_P1_unfixed_wo.csv')
+    field=pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(n)+'.csv', encoding_errors='ignore')
+    field1=field[(field['plot_type']=='Cardinal 10 m')&(field['cardinal']=='Centre')]
+    field2=field[(field['plot_type']=='Cardinal 10 m')&(field['cardinal']!='Centre')]
+    new=pd.merge(field1,gnss, on='plot_id',how='left')
+    field2['northing_m']=np.nan
+    field2['easting_m']=np.nan
+    mer=pd.concat([new,field2],ignore_index=True)
+    merged.append(mer)
+for n in range(len(phases)):
+    merged[n].to_csv('Field_data_'+str(watershed)+'_'+str(year)+'_P'+str(n+1)+'_merged.csv',index=False)

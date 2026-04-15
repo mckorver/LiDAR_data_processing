@@ -4,7 +4,7 @@
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-phase_index=2 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
+phase_index=1 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
 
 import numpy as np
 import pyrsgis
