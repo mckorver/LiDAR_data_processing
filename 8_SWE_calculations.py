@@ -15,7 +15,7 @@ from sklearn.metrics import mean_squared_error
 
 # Import input data -----------------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -39,11 +39,6 @@ def append_fun(a,b):
             a.append(y)
 append_fun(phases,'phases')
 append_fun(subbasin,'subbasin')
-
-# Import watershed mask
-[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_watershed_'+str(resolution2)+'m.tif'))
-nans=np.where(WS<1)
-WS[nans]=np.nan
 
 # Import bare earth
 [R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
@@ -72,16 +67,12 @@ Depth=[]
 for n in range(len(phases)):
     # Import snow depth data (in m) - clip to extent
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/')
-    if glaciers == 'Y':
-        [R,x]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif', bands='all'))
-    else:
-        [R,x]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))
+    [R,x]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))
     nosnow=np.where(x==0) #identify pixels where snow=0m. We set density also to 0 here
     nans=np.where(x<0)
     x[nans]=0 #set all nans to 0
     bsl=np.where(SFAs[n]==1)
     x[bsl]=0 #set all pixels below snowline to 0
-    x=x*WS #only keep pixels with value=1 in watershed mask
     Depth.append(x)
         
     # Import snow density data (in g/cm3) - clip to study area
@@ -92,7 +83,6 @@ for n in range(len(phases)):
     x[nans]=0 #set all nans to 0
     bsl=np.where(SFAs[n]==1)
     x[bsl]=0 #set all pixels below snowline to 0
-    x=x*WS #only keep pixels with value=1 in watershed mask 
     Density.append(x)
 del x,n,bsl
 
@@ -137,12 +127,15 @@ if glaciermodel == 'Y':
         WS_mask_flattened=np.ndarray.flatten(WS_no_lakes)
         SWE_flattened=np.ndarray.flatten(SWE[n])
         modelling_areas=(SWE_flattened/SWE_flattened).astype('float64')
-        i=np.ndarray.flatten(np.array(np.where(WS_mask_flattened==1))).astype('float64')
+        h=np.ndarray.flatten(np.array(np.where(WS_mask_flattened==1))).astype('float64')
+        i=np.ndarray.flatten(np.array(np.where(modelling_areas==1))).astype('float64')
         j=np.ndarray.flatten(np.argwhere(np.isnan(SWE_flattened))).astype('float64')
-        k=(np.intersect1d(i,j))
+        k=(np.intersect1d(h,j))
         k=k.astype('int64')
-        modelling_areas[k]=100
-        l=np.where(modelling_areas==1)
+        l=(np.intersect1d(h,i))
+        l=l.astype('int64')
+        #modelling_areas[k]=100
+        #l=np.where(modelling_areas==1)
         model_building_SWE=SWE_flattened[l]
         model_building_elevation=BE_flattened[l]
         model_building_eastness=Eastness_flattened[l]
@@ -225,7 +218,6 @@ if glaciermodel == 'Y':
         del dims,SWE_flattened
     SWE=SWE_filled
     del WS_no_lakes
-del WS
 
 # Calculations ---------------------------------------------------------------------------------------------------------------------
 min_elevs=[] # These are here just for reference: the min elevations of each subbasin
@@ -342,14 +334,13 @@ for a in range(len(subbasin)):
     elev_bands=np.arange(start=min_elev2, stop=max_elev2, step=100)
 
     # Output ------------------------------------------------------------------------------------------
-    # Export SWE maps. Default is to only save a SWE map for the entire extent. Uncomment lines below (and comment out first lines) if you want to save separate maps for subbasins.
+    # Export SWE maps. Default is to only save a SWE map for the entire extent. Uncomment lines below if you want to save separate maps for subbasins.
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution2)+'m')
-    if subbasin[a]==extent:
-        for n in range(len(phases)):
-            if glaciers == 'Y':
-                pyrsgis.raster.export(SWE_sub[n], R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif')
-            else:
-                pyrsgis.raster.export(SWE_sub[n], R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'.tif')
+    for n in range(len(phases)):
+        if glaciers == 'Y':
+            pyrsgis.raster.export(SWE[n], R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif')
+        else:
+            pyrsgis.raster.export(SWE[n], R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'.tif')
     #if subbasin[a]!=extent:
     #    for n in range(len(phases)):
     #        if glaciers == 'Y':

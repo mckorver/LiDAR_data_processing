@@ -51,6 +51,7 @@ card_dirs=[]
 depths=[]
 cores=[]
 densities=[]
+swes=[]
 manual_remove=[]
 field_phases=[]
 for a in range(len(years)):
@@ -73,10 +74,12 @@ for a in range(len(years)):
         cardinal=cardinal.reshape(len(cardinal),)
         depth=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['snow_depth'])).astype('float64')
         depth=depth.reshape(len(depth),)
-        #core=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['core_length_final'])).astype('float64')
-        #core=core.reshape(len(core),)
+        core=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['core_length_final'])).astype('float64')
+        core=core.reshape(len(core),)
         density=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['density'])).astype('float64')
         density=density.reshape(len(density),)
+        swe=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['swe'])).astype('float64')
+        swe=swe.reshape(len(density),)
         manual_rem=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['manual_remove']))
         manual_rem=manual_rem.reshape(len(manual_rem),)
         field_phase=np.array(phases[a][b])
@@ -89,16 +92,17 @@ for a in range(len(years)):
         plot_types.append(plot_type)
         card_dirs.append(cardinal)
         depths.append(depth)
-        #cores.append(core)
+        cores.append(core)
         densities.append(density)
+        swes.append(swe)
         manual_remove.append(manual_rem)
         field_phases.append(field_phase)
 
 df=pd.DataFrame({"phase":np.concatenate(field_phases),"datetime_field":np.concatenate(datetimes_field),"datetime_aco":np.concatenate(datetimes_aco),
                  "easting_m":np.concatenate(eastings),"northing_m":np.concatenate(northings),
                  "plot_id":np.concatenate(plot_ids),"plot_type":np.concatenate(plot_types),"cardinal":np.concatenate(card_dirs),
-                 "snow_depth":np.concatenate(depths),#"core_depth":np.concatenate(cores),
-                 "density":np.concatenate(densities), "manual_remove":np.concatenate(manual_remove)})
+                 "snow_depth":np.concatenate(depths),"core_depth":np.concatenate(cores),
+                 "density":np.concatenate(densities),"swe":np.concatenate(swes) ,"manual_remove":np.concatenate(manual_remove)})
 df['datetime_field'] = df['datetime_field'].astype('datetime64[ns]')
 df['datetime_aco'] = df['datetime_aco'].astype('datetime64[ns]')
 #df['time_gap_hr']=df['datetime_field']-df['datetime_aco']
@@ -106,27 +110,33 @@ df['datetime_aco'] = df['datetime_aco'].astype('datetime64[ns]')
 #df['time_gap_hr'] = df['time_gap_hr'].abs()
 df['year'] = df['datetime_field'].dt.year.astype('string')
 df['snow_depth_m'] = df['snow_depth']/100
+df['swe'] = df['swe']*10
 
 # QAQC field data
-df=df[(df['density'].notna())&(df['density']>0)]
+#df=df[(df['density'].notna())&(df['density']>0)]
 df['flag'] = 'AV'
 #df.loc[(df['time_gap_hr']>60), 'flag'] = 'time'
 df.loc[(df['manual_remove']=='Y'), 'flag'] = 'manual'
 df.loc[(df['density']>0.8)|(df['density']<0.1), 'flag'] = 'range'
-#df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
+df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
 filt=df.loc[(df['flag']=='AV')].copy()
 
 # Separate between cardinal field plots and point field plots
-filt['swe']=filt.density*filt.snow_depth*10
 temp=filt.drop(columns=['flag','manual_remove'])
 grouped=temp.loc[(temp['plot_type']=='Cardinal 10 m')]
 grouped=grouped[['datetime_field','datetime_aco','easting_m','northing_m','phase','cardinal','plot_id','plot_type','year','density','snow_depth_m','swe']]
 grouped['easting_m']=np.where(grouped['cardinal']!='Centre',np.nan,grouped['easting_m'])
 grouped['northing_m']=np.where(grouped['cardinal']!='Centre',np.nan,grouped['northing_m'])
 times = grouped.loc[(grouped['cardinal']=='Centre')][['datetime_field','datetime_aco','plot_type','year','phase','plot_id']]
-grouped=grouped.groupby(['phase','plot_id','year']).mean().reset_index()
+grouped_mean=grouped.groupby(['phase','plot_id','year']).mean().reset_index()
+grouped_mean=grouped_mean.rename(columns={'density':'density_mean','snow_depth_m':'snow_depth_m_mean','swe':'swe_mean'})
+grouped_sd=grouped.groupby(['phase','plot_id','year']).std().reset_index()
+grouped_sd=grouped_sd.drop(columns=['easting_m','northing_m'])
+grouped_sd=grouped_sd.rename(columns={'density':'density_sd','snow_depth_m':'snow_depth_m_sd','swe':'swe_sd'})
+grouped=pd.merge(grouped_mean,grouped_sd,on=['phase','plot_id','year'],how='inner')
 grouped=pd.merge(grouped,times,on=['phase','plot_id','year'],how='right')
-grouped=grouped[['datetime_field','datetime_aco','year','phase','plot_id','plot_type','easting_m','northing_m','density','snow_depth_m','swe']]
+grouped=grouped[['datetime_field','datetime_aco','year','phase','plot_id','plot_type','easting_m','northing_m',
+                 'density_mean','density_sd','snow_depth_m_mean','snow_depth_m_sd','swe_mean','swe_sd']]
 #points=temp.loc[(temp['plot_type']=='Point')]
 #points=points[['datetime_field','datetime_aco','year','phase','plot_id','plot_type','easting_m','northing_m','density','snow_depth_m','swe']]
 # Combine points and grouped data
@@ -160,7 +170,7 @@ for m in range(len(years)):
     for n in range(len(phases[m])):
         list2=[]
         src_snow = rasterio.open('SnowDepth/resolution_'+str(resolution1)+'m/Final/'+str(watershed)+'_'+str(years[m])+'_'+str(phases[m][n])+'_SnowDepth_lakemodelN.tif')
-        src_swe = rasterio.open('SWE/resolution_'+str(resolution2)+'m/Final/'+str(watershed)+'_'+str(years[m])+'_'+str(phases[m][n])+'_SWE.tif') 
+        src_swe = rasterio.open('SWE/resolution_'+str(resolution2)+'m/Final/'+str(watershed)+'_'+str(years[m])+'_'+str(phases[m][n])+'_SWE_lakemodelN.tif') 
         for b in range(len(plot_ids)):
             list1 = []
             list1.append(years[m])

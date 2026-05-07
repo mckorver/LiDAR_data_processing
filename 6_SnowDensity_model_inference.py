@@ -4,7 +4,7 @@
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-phase_index=1 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
+phase_index=2 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
 
 import numpy as np
 import pyrsgis
@@ -20,7 +20,7 @@ from pathlib import Path
 
 # Import data -----------------------------------------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str, 'DENSversion':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str, 'DENSversion':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -41,7 +41,7 @@ def append_fun(a,b):
     x = var[b][var[b].notna()]
     for n in range(len(x)):
         y = x[n]
-        if isinstance(y, float):
+        if b == 'days_in_season':
             a.append(int(y))
         else:
             a.append(y)
@@ -70,10 +70,7 @@ del scaler
 input=[]
 for n in predictors:
     if n == "snow_depth_m":
-        if glaciers == 'Y':
-            [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif', bands='all'))
-        else:
-            [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))  
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))  
         x=x*100 # convert to cm
         input.append(x)
         rows=x.shape[0]
@@ -172,28 +169,20 @@ gc.collect()
 # Run snow density model
 Simulated_density=rf.predict(input_reshaped)
 
+# Create mask for extent of snowdepth data and Set the pixels below snow cover and outside the data outline to nans
+SD_mask=SD.copy()
+j=np.where(SD>=0)
+SD_mask[j]=1
+Simulated_density=Simulated_density*SD_mask
+
 # OPTIONAL adjust density values
 Simulated_density=Simulated_density + bias_correction_dens[phase_index]
 # OPTIONAL adjust density values with an equation based on snow depth
-#os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/')
-#[R,SD]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))
-#x=SD
-#y=-0.0137*x+0.3327
-#y=np.ndarray.flatten(y)
-#z=np.ndarray.flatten(SFA)
-#nans=np.where(z==1)
-#y[nans]=np.nan
-#Simulated_density=y
+#y=-0.142*(SD/100)+0.2015
+#y[y<0]=0
+#Simulated_density=Simulated_density-y
 
-# Create mask for extent of snowdepth data
-SD_mask=SD
-i=np.where(SD<0)
-j=np.where(SD>=0)
-SD_mask[i]=np.nan
-SD_mask[j]=1
-
-# Set the pixels below snow cover and outside the data outline to nans and reshape into 2-dimensional arrays
-Simulated_density=Simulated_density*SD_mask
+# reshape into 2-dimensional arrays
 Simulated_density=np.reshape(Simulated_density,(rows,cols))
 del rows,cols
 
@@ -208,7 +197,7 @@ pyrsgis.raster.export(Simulated_density, R, filename=str(extent)+'_'+str(year)+'
 
 if lakemodel == 'Y':
     # Read lakes vector dataset and create 100m buffer
-    lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/vector/'+str(extent)+'_lakes/')
+    lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/vector/'+str(watershed)+'_lakes/')
     lakes['buffered'] = lakes.buffer(distance=100)
 
     # Load Density raster

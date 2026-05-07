@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Import processing variables
-var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -66,7 +66,7 @@ else:
 df1=pd.DataFrame()
 for a in range(len(subbasin)):
     # Create a summary table
-    files1=glob.glob(str(subbasin[a])+'**.csv')
+    files1=glob.glob(str(subbasin[a])+'_**.csv')
     merged=pd.DataFrame()
     for n in files1:
         df = pd.read_csv(n).set_index('Survey')

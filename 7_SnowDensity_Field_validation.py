@@ -274,8 +274,8 @@ def plot(x, y, xerr, yerr, **kwargs):
 g = g.map(plot, 'Field_density_mean', 'Lidar_density_mean', 'Field_density_sd', 'Lidar_density_sd')
 def plot_one_to_one(x, y, **kwargs):
     ax = plt.gca()
-    min_val = 0.35
-    max_val = 0.65
+    min_val = 0.2
+    max_val = 0.55
     ax.plot([min_val, max_val], [min_val, max_val], linestyle='--',**kwargs)
 g = g.map(plot_one_to_one, 'Field_density_mean', 'Lidar_density_mean')
 for ax, name in zip(g.axes.flat, Density_field['survey']):
@@ -283,7 +283,7 @@ for ax, name in zip(g.axes.flat, Density_field['survey']):
     text_label = f"Mean diff:\n{value:.2f} g/cm3"
     # Add text using ax.text(x_pos, y_pos, text)
     # The coordinates (x, y) are in data units for that specific subplot
-    ax.text(0.40, maxvalue-0.95, text_label, fontsize=9, color='black', ha='left', va='center')
+    ax.text(0.40, maxvalue-1.15, text_label, fontsize=9, color='black', ha='left', va='center')
 g.set_xlabels("Mean Density (Field) [g*cm^-3]")
 g.set_ylabels("Mean Density (LiDAR) [g*cm^-3]")
 g.add_legend(title="Plot ID")

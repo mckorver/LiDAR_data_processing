@@ -133,8 +133,8 @@ temp=filt.drop(columns=['snow_depth','flag','manual_remove','time_gap_hr'])
 #grouped.loc[grouped['plot_type'].isna(), 'plot_type'] = 'Cardinal 10 m'
 #grouped.loc[grouped['plot_type']=='Cardinal 30 m', 'plot_type'] = 'Cardinal 10 m'
 grouped=temp.loc[(temp['plot_type']=='Cardinal 10 m')]
-#points=temp.loc[(temp['plot_type']=='Point')]
-#points=points[['phase','plot_id','year','easting_m','northing_m','density','snow_depth_m','day_in_season']].reset_index()
+points=temp.loc[(temp['plot_type']=='snow_course')]
+points=points[['phase','plot_id','year','easting_m','northing_m','density','snow_depth_m','day_in_season']].reset_index()
 
 # Get centre coordinates
 grouped=grouped[['easting_m','northing_m','phase','cardinal','plot_id','year','density','snow_depth_m','day_in_season']]
@@ -147,7 +147,7 @@ os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+
 df.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'.csv',index=False)
 filt.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_filtered.csv',index=False)
 grouped_final.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_grouped.csv',index=False)
-#points.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_points.csv',index=False)
+points.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_points.csv',index=False)
 del datetimes_field,datetimes_aco,eastings,northings,depths,densities,manual_remove,field_phases
 
 ## Import LiDAR derived input variables and sample for GROUPED field locations

@@ -13,13 +13,14 @@ import seaborn as sns
 
 # Import input data ------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
 drive = var['drive'][0]
 lidar = var['lidar'][0]
 resolution1 = var['resolution1'][0]
+lakemodel = var['lakemodel'][0]
 phases = []
 x = var['phases'][var['phases'].notna()]
 for n in range(len(x)):
@@ -52,8 +53,8 @@ for b in range(len(phases)):
     plot_id=plot_id.reshape(len(plot_id),)
     depth=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['snow_depth'])).astype('float64')
     depth=depth.reshape(len(depth),)
-    core=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['core_length_final'])).astype('float64')
-    core=core.reshape(len(core),)
+    #core=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['core_length_final'])).astype('float64')
+    #core=core.reshape(len(core),)
     density=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['density'])).astype('float64')
     density=density.reshape(len(density),)
     manual_rem=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['manual_remove']))
@@ -66,14 +67,14 @@ for b in range(len(phases)):
     northings.append(northing)
     depth_ids.append(plot_id)
     depths.append(depth)
-    cores.append(core)
+    #cores.append(core)
     densities.append(density)
     manual_remove.append(manual_rem)
     field_phases.append(field_phase)
 
 df=pd.DataFrame({"phase":np.concatenate(field_phases),"datetime_field":np.concatenate(datetimes_field),"datetime_aco":np.concatenate(datetimes_aco),
                  "easting_m":np.concatenate(eastings),"northing_m":np.concatenate(northings),"plot_id":np.concatenate(depth_ids),
-                 "snow_depth":np.concatenate(depths),"core_depth":np.concatenate(cores),
+                 "snow_depth":np.concatenate(depths),#"core_depth":np.concatenate(cores),
                  "density":np.concatenate(densities), "manual_remove":np.concatenate(manual_remove)})
 df['time_gap_hr']=df['datetime_field']-df['datetime_aco']
 df['time_gap_hr'] = df['time_gap_hr'].dt.total_seconds()/3600
@@ -87,7 +88,7 @@ df=df[(df['snow_depth'].notna())]
 df['flag'] = 'AV'
 df.loc[(df['time_gap_hr']>60), 'flag'] = 'time'
 df.loc[(df['manual_remove']=='Y'), 'flag'] = 'manual'
-df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
+#df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
 filt=df[(df['flag']=='AV')]
 
 Depth_ids=[]
@@ -114,7 +115,7 @@ del x,y,n,plot_id,easting,northing,depth
 # Read gridded input datasets
 LidarDepths=[] #in m
 for n in range(len(phases)):
-    x=rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m/Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_'+str(resolution1)+'m.tif')    
+    x=rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution1)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodelY.tif')    
     LidarDepths.append(x)
 del n,x
 

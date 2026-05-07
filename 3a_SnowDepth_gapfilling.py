@@ -21,7 +21,7 @@ from pathlib import Path
 
 # Import input data -----------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('K:/LiDAR_data_processing/ACO/input_data/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -54,13 +54,8 @@ else:
 nans=np.where(WS_gaps<=0)
 WS_gaps[nans]=np.nan
 
-# Import extent mask
-[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_'+str(resolution1)+'m.tif'))
-nans=np.where(WS<=0)
-WS[nans]=np.nan
-
 # Read lakes vector dataset and create 100m buffer
-lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/vector/'+str(extent)+'_lakes/')
+lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/vector/'+str(watershed)+'_lakes/')
 lakes['buffered'] = lakes.buffer(distance=100)
 
 for n in range(len(phases)):
@@ -246,19 +241,15 @@ for n in range(len(phases)):
         SD_out[i]= np.nan
 
     # Determine areas where interpolation is required (i.e. within the boundary of the watershed, not in lakes or glaciers) and set these areas to 0 and everything else to 1
-    area_mask_flattened=np.ndarray.flatten(WS_gaps)
     SD_flattened=np.ndarray.flatten(SD_out)
     interpolation_areas=(SD_flattened/SD_flattened).astype('float64')
-    a=np.ndarray.flatten(np.array(np.where(area_mask_flattened==1))).astype('float64')
-    b=np.ndarray.flatten(np.argwhere(np.isnan(SD_flattened))).astype('float64')
-    k=(np.intersect1d(a,b))
-    k=k.astype('int64')
-    interpolation_areas[k]=0
+    b=np.ndarray.flatten(np.argwhere(np.isnan(SD_flattened))).astype('int64')
+    interpolation_areas[b]=0
     nans=np.argwhere(np.isnan(interpolation_areas))
     interpolation_areas[nans]=1
-    dims=np.shape(WS_gaps)
+    dims=np.shape(SD_out)
     interpolation_areas_2d=np.reshape(interpolation_areas,(dims[0],dims[1]))
-    del a,b,k,nans,dims,SD_flattened,area_mask_flattened,interpolation_areas
+    del b,nans,dims,SD_flattened,interpolation_areas
         
     filled=rasterio.fill.fillnodata(SD_out,interpolation_areas_2d) #enter 'interpolation_areas_2d' if using mask
 
@@ -269,16 +260,13 @@ for n in range(len(phases)):
         i=np.where(lakemask==1)
         filled[i]= np.nan
 
-    # Cut map along watershed boundaries
-    filled = filled*WS
-
     # Output ---------------------------------------------------------------------------------------
     if glaciers == 'Y':
         os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m')
-        pyrsgis.export(filled,R,filename='Provisional_SD_'+str(watershed)+'_'+str(year)+'_'+str(phase)+'_capped_clipped_vegcorrected_filled_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'_'+str(resolution1)+'m.tif') 
+        pyrsgis.export(filled,R,filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phase)+'_capped_clipped_vegcorrected_filled_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'_'+str(resolution1)+'m.tif') 
     else:
         os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m')
-        pyrsgis.export(filled,R,filename='Provisional_SD_'+str(watershed)+'_'+str(year)+'_'+str(phase)+'_capped_clipped_vegcorrected_filled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif') 
+        pyrsgis.export(filled,R,filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phase)+'_capped_clipped_vegcorrected_filled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif') 
     del filled    
     print('Phase '+str(n+1)+'/'+str(len(phases))+' complete')
 
