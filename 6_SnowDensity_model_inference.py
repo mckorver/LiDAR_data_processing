@@ -4,7 +4,7 @@
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-phase_index=2 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
+phase_index=1 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
 
 import numpy as np
 import pyrsgis
@@ -20,7 +20,7 @@ from pathlib import Path
 
 # Import data -----------------------------------------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str, 'DENSversion':str})
+var = pd.read_csv('E:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str, 'DENSversion':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
