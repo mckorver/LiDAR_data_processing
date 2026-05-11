@@ -4,7 +4,7 @@
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-phase_index=2 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
+phase_index=0 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
 
 import numpy as np
 import pyrsgis
@@ -70,7 +70,7 @@ del scaler
 input=[]
 for n in predictors:
     if n == "snow_depth_m":
-        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))  
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodelN.tif', bands='all'))  
         x=x*100 # convert to cm
         input.append(x)
         rows=x.shape[0]

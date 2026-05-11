@@ -46,8 +46,8 @@ for a in range(len(subbasin)):
         [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_'+str(resolution2)+'m.tif'))
     elif lakemodel == 'N' and (glaciermodel == 'Y' or glaciers =='N'):
         [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_no_lakes_'+str(resolution2)+'m.tif'))
-    elif lakemodel == 'N' and glaciermodel == 'N':
-        [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_no_lakes_no_glaciers_'+str(resolution2)+'m.tif'))
+    #elif lakemodel == 'N' and glaciermodel == 'N':
+    #    [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_no_lakes_no_glaciers_'+str(resolution2)+'m.tif'))
     nans=np.where(WS<1)
     WS[nans]=np.nan
     area=np.nansum(WS)*int(resolution2)*int(resolution2)

@@ -67,7 +67,7 @@ Depth=[]
 for n in range(len(phases)):
     # Import snow depth data (in m) - clip to extent
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/')
-    [R,x]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDepth_lakemodel'+str(lakemodel)+'.tif', bands='all'))
+    [R,x]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodelN.tif', bands='all'))
     nosnow=np.where(x==0) #identify pixels where snow=0m. We set density also to 0 here
     nans=np.where(x<0)
     x[nans]=0 #set all nans to 0
@@ -77,7 +77,7 @@ for n in range(len(phases)):
         
     # Import snow density data (in g/cm3) - clip to study area
     # set snow free areas (i.e., nans) to 0 for mean SWE calcs (so that mean SWE is calculated across whole basin, not just snow-covered areas)
-    [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif', bands='all'))
+    [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDensity_lakemodel'+str(lakemodel)+'_glaciermodelN.tif', bands='all'))
     x[nosnow]=0 #set all 0m snow pixels to 0 density
     nans=np.where(x<0)
     x[nans]=0 #set all nans to 0
@@ -232,8 +232,8 @@ for a in range(len(subbasin)):
             [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_'+str(resolution2)+'m.tif'))
         elif lakemodel == 'N' and (glaciermodel == 'Y' or glaciers == 'N'):
             [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_no_lakes_'+str(resolution2)+'m.tif'))
-        elif lakemodel == 'N' and glaciermodel == 'N':
-            [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_no_lakes_no_glaciers_'+str(resolution2)+'m.tif'))
+        #elif lakemodel == 'N' and glaciermodel == 'N':
+        #    [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_no_lakes_no_glaciers_'+str(resolution2)+'m.tif'))
         nans=np.where(WS<1)
         WS[nans]=np.nan
         x=SWE[n]*WS
@@ -335,12 +335,12 @@ for a in range(len(subbasin)):
 
     # Output ------------------------------------------------------------------------------------------
     # Export SWE maps. Default is to only save a SWE map for the entire extent. Uncomment lines below if you want to save separate maps for subbasins.
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution2)+'m')
-    for n in range(len(phases)):
-        if glaciers == 'Y':
-            pyrsgis.raster.export(SWE[n], R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif')
-        else:
-            pyrsgis.raster.export(SWE[n], R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'.tif')
+    #os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution2)+'m')
+    #for n in range(len(phases)):
+    #    if glaciers == 'Y':
+    #        pyrsgis.raster.export(SWE[n], R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif')
+    #    else:
+    #        pyrsgis.raster.export(SWE[n], R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'.tif')
     #if subbasin[a]!=extent:
     #    for n in range(len(phases)):
     #        if glaciers == 'Y':
