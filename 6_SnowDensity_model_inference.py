@@ -70,7 +70,7 @@ del scaler
 input=[]
 for n in predictors:
     if n == "snow_depth_m":
-        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodelN.tif', bands='all'))  
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif', bands='all'))  
         x=x*100 # convert to cm
         input.append(x)
         rows=x.shape[0]
@@ -122,7 +122,7 @@ else:
     x=pd.read_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/SFETs_'+str(extent)+'_'+str(year)+'.csv')
     SFET=x[x['Survey']==phase]
     SFET=SFET['SFETs'].iloc[0]
-    BE=input[3]
+    BE=input[1]
     SFA=BE/BE
     i=np.where(BE<SFET)
     j=np.where(BE>=SFET)
@@ -256,7 +256,7 @@ if lakemodel == 'Y':
     SD_out=np.reshape(land_flattened,(dims[0],dims[1]))
 
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m')
-    pyrsgis.raster.export(SD_out, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif')
+    pyrsgis.raster.export(SD_out, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif')
 
 # Save processing variables
 var.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Metadata/'+str(extent)+'_'+str(year)+'_processing_variables_'+str(date)+'.csv', index = False)
