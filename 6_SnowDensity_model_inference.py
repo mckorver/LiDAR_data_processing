@@ -193,7 +193,7 @@ Simulated_density[i]= np.nan
 
 # Export simulated snow density map
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/')
-pyrsgis.raster.export(Simulated_density, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif')
+pyrsgis.raster.export(Simulated_density, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity'+'.tif')
 
 if lakemodel == 'Y':
     # Read lakes vector dataset and create 100m buffer
