@@ -36,20 +36,20 @@ def append_fun(a,b):
 append_fun(phases,'phases')
 append_fun(subbasin,'subbasin')
 resolution3 = 10
-future_date = "2026-05-04"
+future_date = "2026-05-18"
 
 # Import bare earth
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/INPUTS')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/INPUTS')
 [R,BE]=np.array(pyrsgis.raster.read(str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution3)+'m.tif', bands='all'))
 nans=np.where(BE<0)
 BE[nans]=np.nan
 
-# Import SWE and melt data (in m) - clip to extent
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/OUTPUTS/SWE_EST')
-[R,SWE_start]=np.array(pyrsgis.raster.read('SWE_est_from_DOY110_to_DOY123_canopy_DDF2p0.tif', bands=1))
+# Import SWE and melt data
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/OUTPUTS/SWE_EST')
+[R,SWE_start]=np.array(pyrsgis.raster.read('SWE_est_from_DOY110_to_DOY140_canopy_DDF2p0.tif', bands=1))
 SWE_start=SWE_start*1000
-[R,melt_act_start]=np.array(pyrsgis.raster.read('SWE_est_from_DOY110_to_DOY123_canopy_DDF2p0.tif', bands=2))
-[R,melt_pot_start]=np.array(pyrsgis.raster.read('SWE_est_from_DOY110_to_DOY123_canopy_DDF2p0.tif', bands=3))
+[R,melt_act_start]=np.array(pyrsgis.raster.read('SWE_est_from_DOY110_to_DOY140_canopy_DDF2p0.tif', bands=2))
+[R,melt_pot_start]=np.array(pyrsgis.raster.read('SWE_est_from_DOY110_to_DOY140_canopy_DDF2p0.tif', bands=3))
 
 # Calculations ---------------------------------------------------------------------------------------------------------------------
 total_SWV=[]
@@ -127,13 +127,13 @@ for a in range(len(subbasin)):
 # Output ------------------------------------------------------------------------------------------
 # Export key numbers 
 if glaciers == 'Y':
-    path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/OUTPUTS/Key_numbers/'
+    path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/OUTPUTS/Key_numbers/'
     os.makedirs(path, exist_ok=True) 
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/OUTPUTS/Key_numbers/')
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/OUTPUTS/Key_numbers/')
 else:
-    path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/OUTPUTS/Key_numbers/'
+    path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/OUTPUTS/Key_numbers/'
     os.makedirs(path, exist_ok=True)
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/OUTPUTS/Key_numbers/')
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/OUTPUTS/Key_numbers/')
 mean_SWE_depth=pd.DataFrame(list(zip(subbasin,mean_SWE_depth)),columns=['Watershed','Mean_SWE_mm'])
 mean_SWE_depth.to_csv('Mean_SWE_'+str(future_date)+'.csv') 
 total_SWV=pd.DataFrame(list(zip(subbasin,total_SWV)),columns=['Watershed','Total_SWV_m3'])
@@ -145,13 +145,13 @@ total_meltpot.to_csv('Total_meltpot_'+str(future_date)+'.csv')
 
 # Export elevation-banded total SWV (m3)
 if glaciers == 'Y':
-    path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/OUTPUTS/Elevation_banded_water_volumes/'
+    path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/OUTPUTS/Elevation_banded_water_volumes/'
     os.makedirs(path, exist_ok=True) 
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/OUTPUTS/Elevation_banded_water_volumes/')
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/OUTPUTS/Elevation_banded_water_volumes/')
 else:
-   path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/OUTPUTS/Elevation_banded_water_volumes/'
+   path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/OUTPUTS/Elevation_banded_water_volumes/'
    os.makedirs(path, exist_ok=True)
-   os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/OUTPUTS/Elevation_banded_water_volumes/')
+   os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/OUTPUTS/Elevation_banded_water_volumes/')
 for m in range(len(subbasin)):
     x=np.array(banded_mean_SWE[m])
     x=x.reshape(len(x),)

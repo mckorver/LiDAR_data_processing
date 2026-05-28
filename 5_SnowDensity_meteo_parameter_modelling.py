@@ -62,7 +62,7 @@ WSlow_elev=int(np.array(pd.read_csv('Metadata_'+str(extent)+'_'+str(year)+'.csv'
 # Import weather station data
 Tair_up = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['Tair_up']))
 Tair_low = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['Tair_low']))
-precip_pipe = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['PC_low_mm']))
+precip_pipe = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['PC_up_mm']))
 DateTime=np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv',usecols=['DateTime']))
 
 # Reformat and check total precip data
