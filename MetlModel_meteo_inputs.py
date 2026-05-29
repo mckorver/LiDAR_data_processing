@@ -50,12 +50,12 @@ max_elev=np.ceil(max_elev).astype(int)
 
 # Import required metadata
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year))
-survey_dates=[]
-for n in phases:
-    x=pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv')
-    y=x[x['survey']==n]
-    y=y['survey_days'].iloc[0]
-    survey_dates.append(y)
+#survey_dates=[]
+#for n in phases:
+#   x=pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv')
+#    y=x[x['survey']==n]
+#    y=y['survey_days'].iloc[0]
+#    survey_dates.append(y)
 WSup_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv', usecols=['WSup_elev']))[0])
 WSlow_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv', usecols=['WSlow_elev']))[0])
 

@@ -120,8 +120,8 @@ del x,n
 #    Depth_filled.append(x)
 
 # OPTIONAL: filling the area with data from a previous survey, minus a certain amount of snow that has melted, run this block and skip all further calculations (but save the raster at the end)
-survey_to_fill = 1
-previous_survey = 0
+survey_to_fill = 4
+previous_survey = 2
 x=Depth[survey_to_fill]
 y=Depth[previous_survey]
 fill=np.where(gapfill[survey_to_fill]>0)
@@ -263,6 +263,8 @@ for n in range(len(phases)):
 
 # Output ------------------------------------------------------------------------------------------
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m')
+pyrsgis.raster.export(Depth_filled[1], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[4])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif')
+
 for n in range(len(phases)):
     if glaciers == 'Y':
         pyrsgis.raster.export(Depth_filled[n], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'_'+str(resolution1)+'m.tif')

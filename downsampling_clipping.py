@@ -61,20 +61,12 @@ for n in range(len(phases)):
 
 # Downsample SWE to 10 m
 for n in range(len(phases)):
-    if glaciers=='Y':
-        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution2)+'m/')
-        cmd='gdalwarp -overwrite -tr 10.0 10.0 -r average -dstnodata "-9999" -of GTiff '+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution3)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif'
-        subprocess.run([x for x in cmd.split(" ") if x != ""])
-        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution3)+'m/')
-        [R,SD]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif', bands='all'))
-        pyrsgis.raster.export(SD, R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif')
-    else:
-        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution2)+'m/')
-        cmd='gdalwarp -overwrite -tr 10.0 10.0 -r average -dstnodata "-9999" -of GTiff '+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution3)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'.tif'
-        subprocess.run([x for x in cmd.split(" ") if x != ""])
-        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution3)+'m/')
-        [R,SD]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'.tif', bands='all'))
-        pyrsgis.raster.export(SD, R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'.tif')
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution2)+'m/')
+    cmd='gdalwarp -overwrite -tr 10.0 10.0 -r average -dstnodata "-9999" -of GTiff '+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution3)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_'+str(resolution3)+'m.tif'
+    subprocess.run([x for x in cmd.split(" ") if x != ""])
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution3)+'m/')
+    [R,SD]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_'+str(resolution3)+'m.tif', bands='all'))
+    pyrsgis.raster.export(SD, R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_'+str(resolution3)+'m.tif')
 
 # Downsample Xt to 2 m
 for m in range(len(phases)):
