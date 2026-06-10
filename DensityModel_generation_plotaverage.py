@@ -115,6 +115,7 @@ df['time_gap_hr'] = df['time_gap_hr'].dt.total_seconds()/3600
 df['time_gap_hr'] = df['time_gap_hr'].abs()
 df['year'] = df['datetime_field'].dt.year.astype('string')
 df['day1'] = pd.to_datetime(df['year']+"-03-01 12:00:00")
+#df['day1'] = pd.to_datetime((df['year'].astype(int) - 1).astype(str) + "-09-01 12:00:00")
 df['day_in_season'] = df['datetime_aco'] - df['day1']
 df['day_in_season'] = df['day_in_season'].dt.total_seconds()/86400
 df['snow_depth_m'] = df['snow_depth']/100

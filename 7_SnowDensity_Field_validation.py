@@ -13,7 +13,7 @@ import seaborn as sns
 
 # Import input data ------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('E:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -267,26 +267,34 @@ Density_plot.to_csv(str(extent)+'_field_validation_by_plot_Density.csv', index=F
 
 Density_plot = Density_plot[Density_plot['Field_density_mean'] > 0]
 maxvalue=np.round(np.max(Density_plot['Lidar_density_mean']) + 1,decimals = 1)
-g = sns.FacetGrid(Density_plot, col='survey',hue='Plot_id')
+g = sns.FacetGrid(Density_plot, col='survey', hue='Plot_id', col_wrap=3)
 def plot(x, y, xerr, yerr, **kwargs):
     plt.errorbar(x, y, xerr=xerr, yerr=yerr, fmt = 'o', **kwargs)
     plt.grid(True)
 g = g.map(plot, 'Field_density_mean', 'Lidar_density_mean', 'Field_density_sd', 'Lidar_density_sd')
 def plot_one_to_one(x, y, **kwargs):
     ax = plt.gca()
-    min_val = 0.2
-    max_val = 0.55
-    ax.plot([min_val, max_val], [min_val, max_val], linestyle='--',**kwargs)
+    min_val = 0.1
+    max_val = 0.6
+    ax.plot([min_val, max_val], [min_val, max_val], linestyle='--', color='gray', linewidth=1)
 g = g.map(plot_one_to_one, 'Field_density_mean', 'Lidar_density_mean')
 for ax, name in zip(g.axes.flat, Density_field['survey']):
-    value = Density_field[Density_field['survey'] == name]['Density_mean_diff_g*cm^-3'].iloc[0]
-    text_label = f"Mean diff:\n{value:.2f} g/cm3"
+    meandiff = Density_field[Density_field['survey'] == name]['Density_mean_diff_g*cm^-3'].iloc[0]
+    rmse = Density_field[Density_field['survey'] == name]['Density_rmse_diff_g*cm^-3'].iloc[0]
+    text_label = f"Mean diff: {meandiff:.2f} g*cm^-3\nRMSE: {rmse:.2f} g*cm^-3"
     # Add text using ax.text(x_pos, y_pos, text)
     # The coordinates (x, y) are in data units for that specific subplot
-    ax.text(0.40, maxvalue-1.15, text_label, fontsize=9, color='black', ha='left', va='center')
+    ax.text(0.30, maxvalue-1.2, text_label, fontsize=9, color='black', ha='left', va='center')
 g.set_xlabels("Mean Density (Field) [g*cm^-3]")
 g.set_ylabels("Mean Density (LiDAR) [g*cm^-3]")
 g.add_legend(title="Plot ID")
+for ax in g.axes.flat:
+    ax.set_xlim(0.15, 0.55)
+    ax.set_ylim(0.15, 0.55)
+    ax.set_aspect('equal')
+    ticks = np.arange(0.2, 0.6, 0.1)
+    ax.set_xticks(ticks)
+    ax.set_yticks(ticks)
 plt.savefig(
     f"{drive}:/LiDAR_data_processing/{lidar}/Bias_analysis/{watershed}/{year}/"
     f"Plot_density_validation.png")

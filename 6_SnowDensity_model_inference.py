@@ -201,7 +201,7 @@ if lakemodel == 'Y':
     lakes['buffered'] = lakes.buffer(distance=100)
 
     # Load Density raster
-    SD_in = rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif')
+    SD_in = rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity.tif')
 
     # Calculate mean, median, min, max snowdensity around each lake
     stats = zonal_stats(lakes['buffered'], SD_in.read(1), affine=SD_in.transform, nodata = SD_in.nodata, stats=["mean", "median", "max", "min"])
@@ -232,7 +232,7 @@ if lakemodel == 'Y':
     del SD_in,geom,geom_value,rasterized,dst,stats
 
     # Reload snowdensity (land) and snowdensity (lake) rasters and merge them
-    [R,land]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'.tif'))
+    [R,land]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity.tif'))
     [S,lake]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/lakes_temp.tif'))
 
     nans=np.where(land<-100)
