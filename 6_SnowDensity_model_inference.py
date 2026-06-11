@@ -20,7 +20,7 @@ from pathlib import Path
 
 # Import data -----------------------------------------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('E:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str, 'DENSversion':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str, 'DENSversion':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -70,7 +70,7 @@ del scaler
 input=[]
 for n in predictors:
     if n == "snow_depth_m":
-        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif', bands='all'))  
+        [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDepth_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif', bands='all'))  
         x=x*100 # convert to cm
         input.append(x)
         rows=x.shape[0]
@@ -193,7 +193,7 @@ Simulated_density[i]= np.nan
 
 # Export simulated snow density map
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/')
-pyrsgis.raster.export(Simulated_density, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity'+'.tif')
+pyrsgis.raster.export(Simulated_density, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif')
 
 if lakemodel == 'Y':
     # Read lakes vector dataset and create 100m buffer
@@ -201,7 +201,7 @@ if lakemodel == 'Y':
     lakes['buffered'] = lakes.buffer(distance=100)
 
     # Load Density raster
-    SD_in = rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity.tif')
+    SD_in = rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif')
 
     # Calculate mean, median, min, max snowdensity around each lake
     stats = zonal_stats(lakes['buffered'], SD_in.read(1), affine=SD_in.transform, nodata = SD_in.nodata, stats=["mean", "median", "max", "min"])
@@ -232,7 +232,7 @@ if lakemodel == 'Y':
     del SD_in,geom,geom_value,rasterized,dst,stats
 
     # Reload snowdensity (land) and snowdensity (lake) rasters and merge them
-    [R,land]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity.tif'))
+    [R,land]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif'))
     [S,lake]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/lakes_temp.tif'))
 
     nans=np.where(land<-100)
@@ -256,7 +256,7 @@ if lakemodel == 'Y':
     SD_out=np.reshape(land_flattened,(dims[0],dims[1]))
 
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m')
-    pyrsgis.raster.export(SD_out, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif')
+    pyrsgis.raster.export(SD_out, R, filename=str(extent)+'_'+str(year)+'_'+str(phase)+'_SnowDensity_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif')
 
 # Save processing variables
 var.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Metadata/'+str(extent)+'_'+str(year)+'_processing_variables_'+str(date)+'.csv', index = False)

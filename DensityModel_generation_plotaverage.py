@@ -113,9 +113,9 @@ df['datetime_aco'] = df['datetime_aco'].astype('datetime64[ns]')
 df['time_gap_hr']=df['datetime_field']-df['datetime_aco']
 df['time_gap_hr'] = df['time_gap_hr'].dt.total_seconds()/3600
 df['time_gap_hr'] = df['time_gap_hr'].abs()
-df['year'] = df['datetime_field'].dt.year.astype('string')
-df['day1'] = pd.to_datetime(df['year']+"-03-01 12:00:00")
-#df['day1'] = pd.to_datetime((df['year'].astype(int) - 1).astype(str) + "-09-01 12:00:00")
+df['year'] = df['datetime_field'].dt.year#.astype('string')
+#df['day1'] = pd.to_datetime(df['year']+"-03-01 12:00:00")
+df['day1'] = pd.to_datetime((df['year']-1).astype('string')+"-09-01 12:00:00")
 df['day_in_season'] = df['datetime_aco'] - df['day1']
 df['day_in_season'] = df['day_in_season'].dt.total_seconds()/86400
 df['snow_depth_m'] = df['snow_depth']/100
@@ -141,13 +141,13 @@ points=points[['phase','plot_id','year','easting_m','northing_m','density','snow
 grouped=grouped[['easting_m','northing_m','phase','cardinal','plot_id','year','density','snow_depth_m','day_in_season']]
 grouped['easting_m']=np.where(grouped['cardinal']!='Centre',np.nan,grouped['easting_m'])
 grouped['northing_m']=np.where(grouped['cardinal']!='Centre',np.nan,grouped['northing_m'])
-grouped_final=grouped.groupby(['phase','plot_id','year']).mean().reset_index()
+grouped=grouped.groupby(['phase','plot_id','year']).mean().reset_index()
 
 # Save field data
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
 df.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'.csv',index=False)
 filt.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_filtered.csv',index=False)
-grouped_final.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_grouped.csv',index=False)
+grouped.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_grouped.csv',index=False)
 points.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_points.csv',index=False)
 del datetimes_field,datetimes_aco,eastings,northings,depths,densities,manual_remove,field_phases
 
@@ -155,8 +155,8 @@ del datetimes_field,datetimes_aco,eastings,northings,depths,densities,manual_rem
 file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv')
 if file.is_file():
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
-    grouped_final=pd.read_csv('Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv')
-    grouped_final['year'] = grouped_final['year'].astype(str)
+    grouped=pd.read_csv('Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv')
+    grouped['year'] = grouped['year'].astype(str)
 else:
     buffer_distance = 10 # buffer distance around centre point of cardinal plot
     # Import Bare Earth metrics 
@@ -173,8 +173,8 @@ else:
     for a in be_list:
         b=[]
         src = rasterio.open(a)
-        for x in range(len(grouped_final)):
-            coords = (grouped_final.at[x,'easting_m'], grouped_final.at[x,'northing_m'])
+        for x in range(len(grouped)):
+            coords = (grouped.at[x,'easting_m'], grouped.at[x,'northing_m'])
             point = Point(coords)
             buffer_poly = point.buffer(buffer_distance)
             # Create a mask from the buffer geometry. geometry_mask returns True for outside, False for inside
@@ -187,7 +187,7 @@ else:
 
     BE_inputs=['elevation_lidar','slope_lidar','curvature_lidar','northness_lidar','eastness_lidar','canopy_density_lidar','canopy_cover_lidar','canopy_height_lidar']
     for x in range(len(BE_inputs)):
-        grouped_final[BE_inputs[x]] = s_BE[x]
+        grouped[BE_inputs[x]] = s_BE[x]
 
     # Import meteorological parameters
     s_meteo=[]
@@ -197,7 +197,7 @@ else:
         os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(years[m])+'/Output/resolution_'+str(resolution1)+'m/')
         for n in range(len(phases[m])):
             list2=[]
-            loc = grouped_final[(grouped_final['year'] == str(years[m])) & (grouped_final['phase'] == str(phases[m][n]))]
+            loc = grouped[(grouped['year'] == int(years[m])) & (grouped['phase'] == str(phases[m][n]))]
             index=loc.index.tolist()
             for b in index:
                 list1=[]
@@ -218,7 +218,7 @@ else:
         s_meteo.extend(list3)
 
     pd_meteo=pd.DataFrame(s_meteo,columns=['index','Xt_model','PDD_model','Snowfall_model']).set_index('index')
-    grouped_final = pd.merge(grouped_final, pd_meteo, left_index=True, right_index=True, how='inner')
+    grouped_final = pd.merge(grouped, pd_meteo, left_index=True, right_index=True, how='inner')
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
     grouped_final.to_csv('Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv',index=False)
 
@@ -268,7 +268,7 @@ else:
         os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(years[m])+'/Output/resolution_'+str(resolution1)+'m/')
         for n in range(len(phases[m])):
             list2=[]
-            loc = points[(points['year'] == str(years[m])) & (points['phase'] == str(phases[m][n]))]
+            loc = points[(points['year'] == int(years[m])) & (points['phase'] == str(phases[m][n]))]
             index=loc.index.tolist()
             for b in index:
                 list1=[]

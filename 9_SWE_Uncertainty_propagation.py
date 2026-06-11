@@ -49,15 +49,15 @@ if lakemodel == 'Y' and (glaciermodel == 'Y' or glaciers == 'N'):
     [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_watershed_'+str(resolution2)+'m.tif'))
 elif lakemodel == 'N' and (glaciermodel == 'Y' or glaciers == 'N'):
     [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_watershed_no_lakes_'+str(resolution2)+'m.tif'))
-#elif lakemodel == 'N' and glaciermodel == 'N':
-#    [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_watershed_no_lakes_no_glaciers_'+str(resolution2)+'m.tif'))
+elif lakemodel == 'N' and glaciermodel == 'N':
+    [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_watershed_no_lakes_no_glaciers_'+str(resolution2)+'m.tif'))
 nans=np.where(WS<1)
 WS[nans]=np.nan
 
 # Import snow density data (g/cm3 --> converted to kg/m3) and clip to WS
 D=[]
 for n in range(len(phases)):
-    [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDensity_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif', bands='all'))
+    [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDensity_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif', bands='all'))
     x[x<0]=np.nan
     x=x*1000*WS
     D.append(x)
@@ -67,7 +67,7 @@ del n,x
 SD=[]
 for n in range(len(phases)):
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDepth/resolution_'+str(resolution2)+'m/')
-    [R,x]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDepth_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'.tif', bands='all'))
+    [R,x]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDepth_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif', bands='all'))
     #x = x.astype(float) # Convert to float to allow NaNs
     x[x < 0] = np.nan
     x=x*WS
