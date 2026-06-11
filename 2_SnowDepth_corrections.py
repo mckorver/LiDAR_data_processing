@@ -59,7 +59,7 @@ for n in range(len(phases)):
 for n in range(len(phases)):
     x=SDs[n]
     y=np.where(x>0)
-    x[y]=x[y] + bias_correction_snow[n]
+    x[y]=x[y] + var['bias_correction_snow'][n]
     SDs[n]=x
 
 # Import lakes (and glaciers) mask

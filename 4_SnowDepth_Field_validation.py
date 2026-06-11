@@ -13,7 +13,7 @@ import seaborn as sns
 
 # Import input data ------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('E:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -280,11 +280,12 @@ def plot_one_to_one(**kwargs):
     ax.plot([min_val, max_val], [min_val, max_val], linestyle='--', linewidth=1,**kwargs)
 g = g.map(plot_one_to_one, color = 'darkgrey')
 for ax, name in zip(g.axes.flat, Depth_field['survey']):
-    value = Depth_field[Depth_field['survey'] == name]['Depth_mean_diff_m'].iloc[0]
-    text_label = f"Mean diff:\n{value:.2f} m"
+    meandiff = Depth_field[Depth_field['survey'] == name]['Depth_mean_diff_m'].iloc[0]
+    rmse = Depth_field[Depth_field['survey'] == name]['Depth_rmse_diff_m'].iloc[0]
+    text_label = f"Mean diff: {meandiff:.2f} m\nRMSE: {rmse:.2f} m"
     # Add text using ax.text(x_pos, y_pos, text)
     # The coordinates (x, y) are in data units for that specific subplot
-    ax.text(0.5, maxvalue-1, text_label, fontsize=9, color='black', ha='left', va='center')
+    ax.text(0.3, maxvalue-1.2, text_label, fontsize=9, color='black', ha='left', va='center')
 g.set_xlabels("Mean Depth (Field) [m]")
 g.set_ylabels("Mean Depth (LiDAR) [m]")
 g.set(xlim=(0,maxvalue), ylim=(0,maxvalue),xticks=np.arange(0,maxvalue,1),yticks=np.arange(0,maxvalue,1))
