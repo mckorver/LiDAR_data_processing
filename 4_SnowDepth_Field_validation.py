@@ -21,7 +21,6 @@ drive = var['drive'][0]
 lidar = var['lidar'][0]
 resolution1 = var['resolution1'][0]
 lakemodel = var['lakemodel'][0]
-glaciermodel = var['glaciermodel'][0]
 phases = []
 x = var['phases'][var['phases'].notna()]
 for n in range(len(x)):

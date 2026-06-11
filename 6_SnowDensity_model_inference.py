@@ -4,7 +4,7 @@
 # A snowdensity raster map
 
 # ACTION REQUIRED - ENTER REQUIREMENTS BELOW
-phase_index=0 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
+phase_index=2 #Enter phase index, i.e. 'P1'=0, 'P2'=1 etc.
 
 import numpy as np
 import pyrsgis
@@ -30,8 +30,6 @@ resolution2 = var['resolution2'][0]
 date = var['date'][0]
 BEversion = var['BEversion'][0]
 CANversion = var['CANversion'][0]
-glaciers = var['glaciers'][0]
-glaciermodel = var['glaciermodel'][0]
 lakemodel = var['lakemodel'][0]
 DENSversion = var['DENSversion'][0]
 bias_correction_dens = []
