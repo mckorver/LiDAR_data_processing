@@ -260,13 +260,22 @@ for n in range(len(phases)):
         i=np.where(lakemask==1)
         filled[i]= np.nan
 
+    clipped = np.array(filled, copy=True)
+    qual_file = (str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Manual_corrections/resolution_'+str(resolution1)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_quality_area.tif')
+    if os.path.exists(qual_file):
+        [R, qual_area] = np.array(pyrsgis.raster.read(qual_file))
+        clipped[qual_area <= 0] = np.nan
+    [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_'+str(resolution1)+'m.tif'))
+    clipped[WS <= 0] = np.nan
+    
     # Output ---------------------------------------------------------------------------------------
     if glaciers == 'Y':
         os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m')
         pyrsgis.export(filled,R,filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phase)+'_capped_clipped_vegcorrected_filled_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'_'+str(resolution1)+'m.tif') 
     else:
         os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m')
-        pyrsgis.export(filled,R,filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phase)+'_capped_clipped_vegcorrected_filled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif') 
+        pyrsgis.export(filled,R,filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phase)+'_capped_clipped_vegcorrected_filled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m_full.tif') 
+        pyrsgis.export(clipped,R,filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phase)+'_capped_clipped_vegcorrected_filled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif') 
     del filled    
     print('Phase '+str(n+1)+'/'+str(len(phases))+' complete')
 

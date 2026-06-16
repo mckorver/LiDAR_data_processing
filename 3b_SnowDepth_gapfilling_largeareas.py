@@ -46,6 +46,7 @@ for n in range(len(phases)):
     if file.is_file():
         [R,gap_area]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Manual_corrections/resolution_'+str(resolution1)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_missing_areas.tif'))
         nans=np.where(gap_area==0)
+        gap_area = gap_area.astype(np.float32)
         gap_area[nans]=np.nan
         gapfill.append(gap_area)
     else:
@@ -120,21 +121,21 @@ del x,n
 #    Depth_filled.append(x)
 
 # OPTIONAL: filling the area with data from a previous survey, minus a certain amount of snow that has melted, run this block and skip all further calculations (but save the raster at the end)
-survey_to_fill = 4
-previous_survey = 2
-x=Depth[survey_to_fill]
-y=Depth[previous_survey]
-fill=np.where(gapfill[survey_to_fill]>0)
-z=y[fill]-1.5
-z[z<0]=0
-x[fill]=z
-if lakemodel == 'N':
-    [R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_lakes_'+str(resolution1)+'m.tif', bands='all'))
-    i=np.where(lakemask==1)
-    x[i]= np.nan
-Depth_filled=[]
-Depth_filled.append(y)
-Depth_filled.append(x)
+# survey_to_fill = 4
+# previous_survey = 2
+# x=Depth[survey_to_fill]
+# y=Depth[previous_survey]
+# fill=np.where(gapfill[survey_to_fill]>0)
+# z=y[fill]-1.5
+# z[z<0]=0
+# x[fill]=z
+# if lakemodel == 'N':
+#     [R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_lakes_'+str(resolution1)+'m.tif', bands='all'))
+#     i=np.where(lakemask==1)
+#     x[i]= np.nan
+# Depth_filled=[]
+# Depth_filled.append(y)
+# Depth_filled.append(x)
 
 # Calculations ---------------------------------------------
 # Flatten model input datasets
@@ -262,14 +263,16 @@ for n in range(len(phases)):
     del dims,Depth_flattened
 
 # Output ------------------------------------------------------------------------------------------
+[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_'+str(resolution1)+'m.tif'))
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m')
-pyrsgis.raster.export(Depth_filled[1], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[4])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif')
-
 for n in range(len(phases)):
     if glaciers == 'Y':
         pyrsgis.raster.export(Depth_filled[n], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'_'+str(resolution1)+'m.tif')
     else:
-        pyrsgis.raster.export(Depth_filled[n], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif')
+        pyrsgis.raster.export(Depth_filled[n], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m_full.tif')
+        clipped = np.array(Depth_filled[n], copy=True)
+        clipped[WS <= 0] = np.nan
+        pyrsgis.raster.export(clipped, R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif')
 
 # Save processing variables
 var.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Metadata/'+str(extent)+'_'+str(year)+'_processing_variables_'+str(date)+'.csv', index = False)
