@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Import processing variables
-var = pd.read_csv('E:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -135,8 +135,8 @@ df5 = pd.merge(df3,df4,how='right',on=['Survey'])
 df5 = df5[['watershed','year','Survey','date','date_figure','Total_SWV_m3','Absolute_total_SWV_errors_m3','Mean_SWE_mm','Absolute_mean_SWE_error']]
 
 df_yearly = pd.concat([df2,df5])
-df_yearly.to_csv(str(watershed)+'/All_years/Yearly_comparison.csv',index=False)
-df1.to_csv(str(watershed)+'/All_years/Yearly_comparison_old.csv',index=False)
+df_yearly.to_csv(str(watershed)+'/All_years/Yearly_comparison_lakemodel'+str(lakemodel)+'.csv',index=False)
+df1.to_csv(str(watershed)+'/All_years/Yearly_comparison_old_lakemodel'+str(lakemodel)+'.csv',index=False)
 
 ### PLOTS -------------------------------------------------------------------------
 df_plot = df_elev.reset_index()
