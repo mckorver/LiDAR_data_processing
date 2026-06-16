@@ -16,7 +16,7 @@ from pathlib import Path
 
 # Import input data -------------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('E:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'DENSversion':str, 'date':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'DENSversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -25,8 +25,6 @@ lidar = var['lidar'][0]
 resolution2 = var['resolution2'][0]
 BEversion = var['BEversion'][0]
 DENSversion = var['DENSversion'][0]
-glaciers = var['glaciers'][0]
-glaciermodel = var['glaciermodel'][0]
 lakemodel = var['lakemodel'][0]
 phases = []
 subbasin = []
@@ -44,13 +42,11 @@ append_fun(subbasin,'subbasin')
 var2 = pd.read_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/model_error_values_v'+str(DENSversion)+'.csv')
 rand_model_error = var2['rand_error'][0]*1000
 
-# Import watershed mask (without lakes or glaciers)
-if lakemodel == 'Y' and (glaciermodel == 'Y' or glaciers == 'N'):
+# Import watershed mask (without lakes)
+if lakemodel == 'Y':
     [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_watershed_'+str(resolution2)+'m.tif'))
-elif lakemodel == 'N' and (glaciermodel == 'Y' or glaciers == 'N'):
+else:
     [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_watershed_no_lakes_'+str(resolution2)+'m.tif'))
-elif lakemodel == 'N' and glaciermodel == 'N':
-    [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_watershed_no_lakes_no_glaciers_'+str(resolution2)+'m.tif'))
 nans=np.where(WS<1)
 WS[nans]=np.nan
 
@@ -230,10 +226,7 @@ del n,x
 
 # Output -------------------------------------------------------------------------------
 # Export results
-if glaciers == 'Y':
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'/')
-else:
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'/')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'/')
 percentage_basin_mass_error1=pd.DataFrame(list(zip(phases,percentage_basin_mass_error)),columns=['Survey','Percentage_total_SWV_errors'])
 for a in range(len(subbasin)):
     percentage_basin_mass_error1.to_csv(str(subbasin[a])+'_'+str(year)+'_Percentage_total_SWV_errors.csv')

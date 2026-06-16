@@ -9,13 +9,10 @@ import pyrsgis
 import os
 import pandas as pd
 from pathlib import Path
-from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
 
 # Import input data -----------------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('E:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -24,8 +21,6 @@ lidar = var['lidar'][0]
 resolution2 = var['resolution2'][0]
 BEversion = var['BEversion'][0]
 date = var['date'][0]
-glaciers = var['glaciers'][0]
-glaciermodel = var['glaciermodel'][0]
 lakemodel = var['lakemodel'][0]
 phases = []
 subbasin = []
@@ -62,6 +57,16 @@ for n in phases:
         SFA[j]=0
     SFAs.append(SFA)
 
+# OPTIONAL Read in SWE maps if you want to use a previously created version
+#SWE=[]
+#for n in range(len(phases)):
+#    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SWE/resolution_'+str(resolution2)+'m/Final/')
+#    [R,x]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif', bands='all')) 
+#    nans=np.where(x<0)
+#    x[nans]=np.nan
+#    x=x*1000
+#   SWE.append(x)
+
 Density=[]
 Depth=[]
 for n in range(len(phases)):
@@ -93,132 +98,6 @@ for n in range(len(phases)):
     SWE.append(x)
 del x,n
 
-if glaciermodel == 'Y':
-    [R,WS_no_lakes]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_watershed_no_lakes_'+str(resolution2)+'m.tif'))
-    nans=np.where(WS_no_lakes<1)
-    WS_no_lakes[nans]=np.nan
-    
-    # Import eastness, northness, and slope
-    [R,Eastness]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
-    nans=np.where(Eastness<-100)
-    Eastness[nans]=np.nan
-    Eastness=Eastness*WS_no_lakes # Remove input data for lake areas
-    [R,Northness]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
-    nans=np.where(Northness<-100)
-    Northness[nans]=np.nan
-    Northness=Northness*WS_no_lakes # Remove input data for lake areas
-    [R,Slope]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
-    nans=np.where(Slope<-100)
-    Slope[nans]=np.nan
-    Slope=Slope*WS_no_lakes # Remove input data for lake areas
-    del nans
-
-    # Flatten model input datasets
-    BE_flattened=np.ndarray.flatten(BE)
-    Eastness_flattened=np.ndarray.flatten(Eastness)
-    Northness_flattened=np.ndarray.flatten(Northness)
-    Slope_flattened=np.ndarray.flatten(Slope)
-    del Eastness,Northness,Slope
-
-    # Run modelling-based gap-filling for each phase and each subbasin
-    SWE_filled=[]
-    for n in range(len(phases)):
-        # Determine areas where interpolation is required (i.e. within the boundary of the watershed, not in lakes) and set these areas to 0 and everything else to 1
-        WS_mask_flattened=np.ndarray.flatten(WS_no_lakes)
-        SWE_flattened=np.ndarray.flatten(SWE[n])
-        modelling_areas=(SWE_flattened/SWE_flattened).astype('float64')
-        h=np.ndarray.flatten(np.array(np.where(WS_mask_flattened==1))).astype('float64')
-        i=np.ndarray.flatten(np.array(np.where(modelling_areas==1))).astype('float64')
-        j=np.ndarray.flatten(np.argwhere(np.isnan(SWE_flattened))).astype('float64')
-        k=(np.intersect1d(h,j))
-        k=k.astype('int64')
-        l=(np.intersect1d(h,i))
-        l=l.astype('int64')
-        #modelling_areas[k]=100
-        #l=np.where(modelling_areas==1)
-        model_building_SWE=SWE_flattened[l]
-        model_building_elevation=BE_flattened[l]
-        model_building_eastness=Eastness_flattened[l]
-        model_building_northness=Northness_flattened[l]    
-        model_building_slope=Slope_flattened[l]
-        model_inference_elevation=BE_flattened[k]
-        model_inference_eastness=Eastness_flattened[k]
-        model_inference_northness=Northness_flattened[k]
-        model_inference_slope=Slope_flattened[k]
-        del WS_mask_flattened,i,j,l,modelling_areas
-                
-        # Delete pixels where no input variables are available for model building
-        nans=np.argwhere(np.isnan(model_building_eastness))
-        model_building_eastness=np.delete(model_building_eastness,nans)
-        model_building_northness=np.delete(model_building_northness,nans)
-        model_building_slope=np.delete(model_building_slope,nans)
-        model_building_elevation=np.delete(model_building_elevation,nans)
-        model_building_SWE=np.delete(model_building_SWE,nans)
-        nans=np.argwhere(np.isnan(model_building_northness))
-        model_building_eastness=np.delete(model_building_eastness,nans)
-        model_building_northness=np.delete(model_building_northness,nans)
-        model_building_slope=np.delete(model_building_slope,nans)
-        model_building_elevation=np.delete(model_building_elevation,nans)
-        model_building_SWE=np.delete(model_building_SWE,nans)
-        nans=np.argwhere(np.isnan(model_building_elevation))
-        model_building_eastness=np.delete(model_building_eastness,nans)
-        model_building_northness=np.delete(model_building_northness,nans)
-        model_building_slope=np.delete(model_building_slope,nans)
-        model_building_elevation=np.delete(model_building_elevation,nans)
-        model_building_SWE=np.delete(model_building_SWE,nans)
-                
-        # Set pixels where input variables are not available for model inference to -9999
-        nans=np.argwhere(np.isnan(model_inference_eastness))
-        model_inference_eastness[nans]=-9999
-        model_inference_northness[nans]=-9999
-        model_inference_slope[nans]=-9999
-        model_inference_elevation[nans]=-9999
-        nan_count=len(nans)
-        nans=np.argwhere(np.isnan(model_inference_northness))
-        model_inference_eastness[nans]=-9999
-        model_inference_northness[nans]=-9999
-        model_inference_slope[nans]=-9999
-        model_inference_elevation[nans]=-9999
-        nan_count=nan_count+len(nans)
-        nans=np.argwhere(np.isnan(model_inference_elevation))
-        model_inference_eastness[nans]=-9999
-        model_inference_northness[nans]=-9999
-        model_inference_slope[nans]=-9999
-        model_inference_elevation[nans]=-9999
-        nan_count=nan_count+len(nans)
-                
-        # Create MLR model between elevation, northness, eastness, slope and SWE 
-        x_variables=np.transpose([model_building_elevation,model_building_northness,model_building_eastness,model_building_slope])
-        y_variables=model_building_SWE
-        x_train,x_test,y_train,y_test=train_test_split(x_variables,y_variables,test_size=0.2, random_state=12345)
-        MLR_model=LinearRegression().fit(x_train,y_train)
-        MLR_model.fit(x_train,y_train)
-        pred_test=MLR_model.predict(x_test)
-        rmse=np.sqrt(mean_squared_error(y_test,pred_test))
-        del x_variables,y_variables,x_train,x_test,model_building_SWE,model_building_elevation,model_building_eastness,model_building_northness,model_building_slope,pred_test
-                
-        # Apply MLR model to gaps
-        x_variables_inference=np.transpose([model_inference_elevation,model_inference_northness,model_inference_eastness,model_inference_slope])
-        modelled_y=MLR_model.predict(x_variables_inference)
-        SWE_flattened[k]=modelled_y
-        del x_variables_inference,k,model_inference_eastness,model_inference_northness,model_inference_slope,MLR_model
-                
-        # Cap any anomylously high or low modelled values
-        #errors=np.where(SWE_flattened<0)
-        #SWE_flattened[errors]=np.nan
-        #errors=np.where(SWE_flattened>5000)
-        #SWE_flattened[errors]=5000    
-                
-        # Re-enter nans and reshape results
-        nans=np.where(model_inference_elevation==-9999)
-        SWE_flattened[nans]=np.nan
-        dims=np.shape(SWE[n])
-        x=np.reshape(SWE_flattened,(dims[0],dims[1]))
-        SWE_filled.append(x)
-        del dims,SWE_flattened
-    SWE=SWE_filled
-    del WS_no_lakes
-
 # Calculations ---------------------------------------------------------------------------------------------------------------------
 min_elevs=[] # These are here just for reference: the min elevations of each subbasin
 max_elevs=[] # These are here just for reference: the max elevations of each subbasin
@@ -228,12 +107,10 @@ for a in range(len(subbasin)):
     Density_sub=[]
     for n in range(len(phases)):
         # Clip SnowDepth, SnowDensity, SWE map by subbasin:
-        if lakemodel == 'Y' and (glaciermodel == 'Y' or glaciers == 'N'):
+        if lakemodel == 'Y':
             [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_'+str(resolution2)+'m.tif'))
-        elif lakemodel == 'N' and (glaciermodel == 'Y' or glaciers == 'N'):
+        else:
             [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_no_lakes_'+str(resolution2)+'m.tif'))
-        #elif lakemodel == 'N' and glaciermodel == 'N':
-        #    [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_no_lakes_no_glaciers_'+str(resolution2)+'m.tif'))
         nans=np.where(WS<1)
         WS[nans]=np.nan
         x=SWE[n]*WS
@@ -343,14 +220,9 @@ for a in range(len(subbasin)):
     #          pyrsgis.raster.export(SWE_sub[n], R, filename=str(subbasin[a])+'_'+str(year)+'_'+str(phases[n])+'_SWE_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif')
 
     # Export key numbers 
-    if glaciers == 'Y':
-        path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)
-        os.makedirs(path, exist_ok=True) 
-        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'/')
-    else:
-        path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)
-        os.makedirs(path, exist_ok=True)
-        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'/')
+    path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)
+    os.makedirs(path, exist_ok=True)
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'/')
     mean_Depth=pd.DataFrame(list(zip(phases,mean_Depth)),columns=['Survey','Mean_snow_depth_m'])
     mean_Depth.to_csv(str(subbasin[a])+'_'+str(year)+'_Mean_snow_depth.csv')
     mean_Depth_above=pd.DataFrame(list(zip(phases,mean_Depth_above)),columns=['Survey','Mean_snow_depth_aboveSL_m'])
@@ -365,14 +237,9 @@ for a in range(len(subbasin)):
     total_SWV.to_csv(str(subbasin[a])+'_'+str(year)+'_Total_SWV.csv')
 
     # Export elevation-banded total SWV (m3)
-    if glaciers == 'Y':
-        path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Elevation_banded_water_volumes/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)
-        os.makedirs(path, exist_ok=True)
-        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Elevation_banded_water_volumes/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'_glaciermodel'+str(glaciermodel)+'/')
-    else:
-        path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Elevation_banded_water_volumes/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)
-        os.makedirs(path, exist_ok=True)
-        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Elevation_banded_water_volumes/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'/')
+    path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Elevation_banded_water_volumes/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)
+    os.makedirs(path, exist_ok=True)
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Elevation_banded_water_volumes/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'/')
     for m in range(len(banded_total_SWV)):
         y=np.array(banded_total_SWV[m])
         y=y.reshape(len(y),)

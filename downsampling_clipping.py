@@ -314,12 +314,12 @@ for n in range(len(phases)):
 [R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif', bands='all'))
 
 # Import glacier DEM
-[R,glacierDEM]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/Comox_glacier_DEM/2024/resolution_'+str(resolution1)+'m/CRU_GlacierDEM_2024_1m.tif', bands='all'))
+[R,glacierDEM]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/Comox_glacier_DEM/2020/resolution_'+str(resolution1)+'m/CRU_GlacierDEM_2020_1m.tif', bands='all'))
 BE[BE<0]= np.nan
 glacierDEM[glacierDEM<0]= np.nan
 x=BE
 i=np.where(glacierDEM>=0)
 x[i]=glacierDEM[i]
 New_BE=x
-os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v2.3/resolution_'+str(resolution1)+'m/')
-pyrsgis.export(New_BE,R,filename=str(extent)+'_BE_v2.3_'+str(resolution1)+'m.tif')
+os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v2.1/resolution_'+str(resolution1)+'m/')
+pyrsgis.export(New_BE,R,filename=str(extent)+'_BE_v2.1_'+str(resolution1)+'m.tif')
