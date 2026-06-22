@@ -33,8 +33,8 @@ append_fun(phases,'phases')
 append_fun(subbasin,'subbasin')
 
 # Create new folder named as the 'date' variable
-path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)
-os.makedirs(path, exist_ok=True) 
+#path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)
+#os.makedirs(path, exist_ok=True) 
 
 # Calculate watershed and subbasin areas
 WS_areas=[]
@@ -49,7 +49,7 @@ for a in range(len(subbasin)):
     area=np.nansum(WS)*int(resolution2)*int(resolution2)
     WS_areas.append(area)
 WS_areas=pd.DataFrame(list(zip(subbasin,WS_areas)),columns=['subbasin','WS_area_m2'])
-WS_areas.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/'+str(watershed)+'_WS_areas_lakemodel'+str(lakemodel)+'.csv',index=False)
+#WS_areas.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/'+str(watershed)+'_WS_areas_lakemodel'+str(lakemodel)+'.csv',index=False)
 
 # Create a summary table
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/SWE_calculations/'+str(watershed)+'/Key_numbers/'+str(year)+'/resolution_'+str(resolution2)+'m/lakemodel'+str(lakemodel)+'/')
@@ -89,7 +89,7 @@ cols = df1.columns.tolist()
 cols = cols[-1:] + cols[:-1]
 cols = cols[-1:] + cols[:-1]
 sum_table = df1[cols]
-sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Summary_table_'+str(extent)+'_'+str(year)+'_lakemodel'+str(lakemodel)+'.csv',index=False)
+#sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Summary_table_'+str(extent)+'_'+str(year)+'_lakemodel'+str(lakemodel)+'.csv',index=False)
 del df1,cols
 
 # Create an elevation banded summary table
@@ -119,11 +119,11 @@ for a in range(len(subbasin)):
     x = pd.concat(all_merged)
     df_elev.append(x)
 df_elev = pd.concat(df_elev)
-df_elev.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Elevation_table_'+str(extent)+'_'+str(year)+'_lakemodel'+str(lakemodel)+'.csv')
+#df_elev.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Elevation_table_'+str(extent)+'_'+str(year)+'_lakemodel'+str(lakemodel)+'.csv')
 
 # Update the 'Yearly_comparison' csv
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/')
-df1 = pd.read_csv(str(watershed)+'/All_years/Yearly_comparison.csv')
+df1 = pd.read_csv(str(watershed)+'/All_years/Yearly_comparison_lakemodel'+str(lakemodel)+'.csv')
 df2 = df1[df1["year"] != int(year)]
 df2 = df2[['watershed','year','Survey','date','date_figure','Total_SWV_m3','Absolute_total_SWV_errors_m3','Mean_SWE_mm','Absolute_mean_SWE_error']]
 df3 = pd.read_csv('All_watersheds/Survey_dates.csv')
@@ -136,7 +136,7 @@ df5 = df5[['watershed','year','Survey','date','date_figure','Total_SWV_m3','Abso
 
 df_yearly = pd.concat([df2,df5])
 df_yearly.to_csv(str(watershed)+'/All_years/Yearly_comparison_lakemodel'+str(lakemodel)+'.csv',index=False)
-df1.to_csv(str(watershed)+'/All_years/Yearly_comparison_old_lakemodel'+str(lakemodel)+'.csv',index=False)
+df1.to_csv(str(watershed)+'/All_years/Yearly_comparison_lakemodel'+str(lakemodel)+'_old.csv',index=False)
 
 ### PLOTS -------------------------------------------------------------------------
 df_plot = df_elev.reset_index()
