@@ -21,7 +21,7 @@ import utm
 import pyrsgis
 
 # Import processing variables
-var = pd.read_csv('K:/LiDAR_data_processing/ACO/Density_modelling/ML_model_processing_variables.csv', dtype={'years':str, 'resolution1':str, 'BEversion':str, 'CANversion':str, 'DENSversion':str})
+var = pd.read_csv('V:/LiDAR_data_processing/ACO/Density_modelling/ML_model_processing_variables.csv', dtype={'years':str, 'resolution1':str, 'BEversion':str, 'CANversion':str, 'DENSversion':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 drive = var['drive'][0]
@@ -52,13 +52,13 @@ for n in range(len(phase)):
         a.append(x)
     phases.append(a)
 if watershed == 'TSI':
-    region_name = 'Tsitika' 
+    region_name = 'TSITIKA' 
 elif watershed == 'CRU':
-    region_name = 'Cruickshank'
+    region_name = 'CRUICKSHANK'
 elif watershed == 'ENG':
-    region_name = 'Englishman'
+    region_name = 'ENGLISHMAN'
 elif watershed == 'MV':
-    region_name = 'Metro Vancouver'
+    region_name = 'METRO VANCOUVER'
 # RAIN-SNOW THRESHOLD (according to Jennings et al., 2018)
 if watershed == 'TSI':
     rain_snow_threshold=0.98 
@@ -74,24 +74,23 @@ elif watershed == 'MV':
 os.chdir(str(drive)+':/LiDAR_data_processing/Field_data/')
 plots=pd.read_csv('snowplots.csv')
 plots=plots[plots['region_name']==region_name]
-plots['datetime'] = plots['sample_timestamp'].astype('datetime64[ns]')
+plots['datetime'] = plots['datetime'].astype('datetime64[ns]')
 plots['date']=plots['datetime'].dt.date
+plots['year']=plots['datetime'].dt.year
+plots['water_year']=np.where(plots['datetime'].dt.month.isin(np.arange(1,9)),
+                             plots['year'], plots['year']+1)
 easting, northing, zone_number, zone_letter = utm.from_latlon(
     plots['latitude'].values, 
     plots['longitude'].values)
 plots['easting']=easting
 plots['northing']=northing
-plots['year']=plots['datetime'].dt.year
-plots['water_year']=np.where(plots['datetime'].dt.month.isin(np.arange(1,9)),
-                             plots['year'], plots['year']+1)
-plots['coord_water_year']=plots['coord_year']
 plots['site_name']=plots['plot_name']
 a=plots[plots['sample_type']=='Density']
 b=plots[plots['sample_type']=='Depth']
 c=pd.merge(a.drop(columns=['latitude','longitude','easting','northing','probe_depth_cm']), # Merge associated (same location, same datetime) Density and Depth measurements. 
            b[['datetime','direction','distance','probe_depth_cm','easting','northing']], 
            on=['datetime','direction','distance'], how='left')
-d=c[c['probe_depth_cm'].isna()]
+d=c[c['probe_depth_cm'].isna()] # Set the density measurements with no associated depth measurement aside
 e=pd.merge(d[['id']],a[['id','easting','northing']], on='id', how='left') # We use the coordinates of the Depth measurements. If no Depth meas is available, we use the core depth of the density meas.
 plots=pd.concat([pd.merge(e,d.drop(columns=['easting','northing']), on='id', how='inner'),
              c[c['probe_depth_cm'].notna()]],
@@ -101,15 +100,15 @@ plots['sample_type'] = 'snowplot'
 plots['core_number'] = np.nan
 plots=plots[['id','sub_id','date','datetime','water_year','coord_water_year','region_name','sample_type',
              'site_name','easting','northing','direction', 'distance','core_number',
-             'snow_depth_m','density_percent','swe_cm','elevation_m','probe_depth_cm','notes' ]]
+             'snow_depth_m','density_frac','swe_cm','elevation_m','probe_depth_cm','notes' ]]
 del a,b,c,d,e
 
 courses=pd.read_csv('snowcourse.csv')
 courses=courses[courses['region_name']==region_name]
-courses['datetime'] = courses['date'].astype('datetime64[ns]')
+courses['datetime'] = courses['datetime'].astype('datetime64[ns]')
 courses['date']=courses['datetime'].dt.date
 courses=courses[courses['latitude'].notna()]
-courses=courses[courses['density_percent'].notna()]
+courses=courses[courses['density_frac'].notna()]
 easting, northing, zone_number, zone_letter = utm.from_latlon(
     courses['latitude'].values, 
     courses['longitude'].values)
@@ -124,14 +123,13 @@ courses['notes']=np.nan
 courses['snow_depth_m']=courses['core_depth_cm']/100
 courses=courses[['id','sub_id','date','datetime','water_year','coord_water_year','region_name','sample_type',
              'site_name','easting','northing','direction','distance','core_number',
-             'snow_depth_m','density_percent','swe_cm','elevation_m','probe_depth_cm','notes' ]]
+             'snow_depth_m','density_frac','swe_cm','elevation_m','probe_depth_cm','notes' ]]
 
 ## QAQC field snowplot and snowcourse data
 plots['flag'] = 'AV'
 plots.loc[(plots['probe_depth_cm'].isna()), 'flag'] = 'snow depth from core'
 plots.loc[(plots['water_year']!=plots['coord_water_year']), 'flag'] = 'coord uncertainty'
 plots.loc[(plots['density_percent']>0.8)|(plots['density_percent']<0.1), 'flag'] = 'out of range'
-#filt.loc[(filt['snow_depth']-filt['core_depth']<-5)|(filt['snow_depth']/filt['core_depth']>=2), 'flag'] = 'core'
 plot_filt=plots[(plots['flag']=='AV')|(plots['flag']=='snow depth from core')]
 courses['flag'] = 'AV'
 courses.loc[(courses['water_year']!=courses['coord_water_year']), 'flag'] = 'coord uncertainty'
@@ -166,6 +164,8 @@ grouped=grouped.sort_values(by='date')
 
 # Save plots data
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
+plots.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_unfiltered_plots.csv',index=False)
+courses.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_unfiltered_courses.csv',index=False)
 filt.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'.csv',index=False)
 grouped.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_grouped.csv',index=False)
 #endregion
