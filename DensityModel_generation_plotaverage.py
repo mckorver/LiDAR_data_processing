@@ -162,6 +162,7 @@ course_gr=course_gr.groupby(['site_name','date']).mean().reset_index()
 course_gr['sample_type'] = 'snowcourse'
 grouped=pd.concat((plot_gr,course_gr),ignore_index=True)
 grouped['water_year']=grouped['water_year'].astype(int)
+grouped=grouped.sort_values(by='date')
 
 # Save plots data
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
@@ -169,10 +170,49 @@ filt.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'.csv',index=Fals
 grouped.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_grouped.csv',index=False)
 #endregion
 
+#region Import LiDAR derived input variables and sample for field locations
+file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/Input_variables_'+'v'+str(DENSversion)+'.csv')
+if file.is_file():
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
+    grouped=pd.read_csv('Input_variables_'+'v'+str(DENSversion)+'.csv')
+    grouped['year'] = grouped['year'].astype(str)
+else:
+    buffer_distance = 10 # buffer distance around centre point of cardinal plot
+    # Import Bare Earth metrics 
+    s_BE=[]
+    os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/')
+    be_list = ['DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
+            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
+            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
+            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
+            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
+            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',
+            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',
+            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m.tif']
+    for a in be_list:
+        b=[]
+        src = rasterio.open(a)
+        for x in range(len(grouped)):
+            coords = (grouped.at[x,'easting'], grouped.at[x,'northing'])
+            point = Point(coords)
+            buffer_poly = point.buffer(buffer_distance)
+            # Create a mask from the buffer geometry. geometry_mask returns True for outside, False for inside
+            mask = rasterio.features.geometry_mask([buffer_poly],out_shape=src.shape,transform=src.transform,invert=False)
+            data = src.read(1) # Read data and apply mask. Read first band
+            sampled_values = data[~mask] # Extract only the masked pixels (where mask is False, i.e., inside buffer). Using ~mask to select True where the buffer is
+            sampled_value = np.nanmean(sampled_values) # Take the mean of all pixels within buffer
+            b.append(sampled_value)
+        s_BE.append(b)
+
+    BE_inputs=['elevation_lidar','slope_lidar','curvature_lidar','northness_lidar','eastness_lidar','canopy_density_lidar','canopy_cover_lidar','canopy_height_lidar']
+    for x in range(len(BE_inputs)):
+        grouped[BE_inputs[x]] = s_BE[x]
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
+    grouped.to_csv('Input_variables_'+'v'+str(DENSversion)+'.csv',index=False)
+#endregion
+
 #region Xt processing
 ## Get Xt for every 1m elevation band, every 'day in season' (day since Sep 1st) of each water year
-grouped['day_in_season']=grouped['date']-pd.to_datetime((grouped['water_year']-1).astype('string')+"-09-01 12:00:00").dt.date
-grouped['day_in_season']=grouped['day_in_season'].dt.days
 
 # Import bare earth and get min and max elev
 [R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif', bands='all'))
@@ -185,185 +225,100 @@ min_elev=np.floor(min_elev).astype(int)
 max_elev=np.nanmax(BE)
 max_elev=np.ceil(max_elev).astype(int)
 
-# Import station elevations
+# Import station metadata
 os.chdir(str(drive)+':/LiDAR_data_processing/Weather_station_data/'+str(watershed)+'/')
-WSup_airT_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'.csv', usecols=['WSup_airT_elev']))[0])
-WSlow_airT_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'.csv', usecols=['WSlow_airT_elev']))[0])
-WSup_precip_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'.csv', usecols=['WSup_precip_elev']))[0])
-WSlow_precip_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'.csv', usecols=['WSlow_precip_elev']))[0])
+metadata = pd.read_csv('Metadata_'+str(watershed)+'.csv')
+WSup_airT=metadata['WSup_airT'][0]
+WSlow_airT=metadata['WSlow_airT'][0]
+WSup_precip=metadata['WSup_precip'][0]
+WSlow_precip=metadata['WSlow_precip'][0]
+WSup_airT_elev=metadata['WSup_airT_elev'][0]
+WSlow_airT_elev=metadata['WSlow_airT_elev'][0]
+WSup_precip_elev=metadata['WSup_precip_elev'][0]
+WSlow_precip_elev=metadata['WSlow_precip_elev'][0]
 
 # Import weather station data
-Tair_up = np.array(pd.read_csv('WS_data_'+str(watershed)+'.csv', usecols=['Tair_up']))
-Tair_low = np.array(pd.read_csv('WS_data_'+str(watershed)+'.csv', usecols=['Tair_low']))
-precip_pipe = np.array(pd.read_csv('WS_data_'+str(watershed)+'.csv', usecols=['PC_up_mm']))
-DateTime=np.array(pd.read_csv('WS_data_'+str(watershed)+'.csv',usecols=['DateTime']))
+Tair_up = pd.read_csv('density_model_airtemp/'+WSup_airT+'_mlr_results.csv')
+Tair_up['Tair_up']=Tair_up['observed'].fillna(Tair_up['predicted'])
+Tair_low = pd.read_csv('density_model_airtemp/'+WSlow_airT+'_mlr_results.csv')
+Tair_low['Tair_low']=Tair_low['observed'].fillna(Tair_low['predicted'])
+Wx=pd.merge(Tair_up[['DateTime','Tair_up']],Tair_low[['DateTime','Tair_low']], on ='DateTime', how='inner')
+Wx['DateTime']=Wx['DateTime'].astype('datetime64[ns]')
+Wx['date']=Wx['DateTime'].dt.strftime('%Y-%m-%d')
+
+#precip_pipe = np.array(pd.read_csv('WS_data_'+str(watershed)+'.csv', usecols=['PC_up_mm']))
 
 # Reformat total precip data
-precip_pipe=precip_pipe.astype('float64')
-df=pd.DataFrame(precip_pipe) 
-Precip=np.array(df).flatten()
-del x,n,df,precip_pipe
+#precip_pipe=precip_pipe.astype('float64')
+#df=pd.DataFrame(precip_pipe) 
+#Precip=np.array(df).flatten()
+#del x,n,df,precip_pipe
 
 # Calculations -----------------------------------------------------------------------------
-# Calculate atmospheric lapse rate for every time interval
-lapse_rate = (Tair_up-Tair_low)/(WSup_airT_elev-WSlow_airT_elev)
-del WSlow_airT_elev,Tair_low
-
 # Calculate air temperature for each elevation and each timestamp based on atmospheric lapse rate
 # Set all negative airTemps to 0 so that PDH (positive degree hour) sum can be calculated
+lapse_rate = np.array((Wx['Tair_up']-Wx['Tair_low'])/(WSup_airT_elev-WSlow_airT_elev))
 elevs = np.arange(start=min_elev, stop=max_elev, step=1) 
-Tair_corrected=[]
-PDH_all=[]
+Tair_array=[]
 for n in range(len(elevs)):
-    x=(elevs[n]-WSup_airT_elev)*lapse_rate
-    Corrected=Tair_up+x
-    PDH=Corrected
-    non_PDH=np.where(Corrected<0)
-    PDH[non_PDH] = 0
-    Tair_corrected.append(Corrected)
-    PDH_all.append(PDH)
+    x=np.array(((elevs[n]-WSup_airT_elev)*lapse_rate)+np.array(Wx['Tair_up']))
+    x[x<0]=0
+    Tair_array.append(x)
 
 # Calculate snowfall for each elevation and each timestamp
-Snowfall=[]
+#Snow_array=[]
+#for n in range(len(elevs)):
+#    snow_vs_rain=Tair_array[n]
+#    snow_vs_rain=np.reshape(snow_vs_rain,(len(snow_vs_rain),))
+#    non_snow=np.where(snow_vs_rain>rain_snow_threshold)
+#    snow=np.where(snow_vs_rain<=rain_snow_threshold)
+#    snow_vs_rain[non_snow]=0
+#    snow_vs_rain[snow]=1
+#    snowfall=np.multiply(snow_vs_rain,Precip)
+#    Snow_array.append(snowfall)
+
+Tair=Wx[['date']]
+Snow=Wx[['date']]
 for n in range(len(elevs)):
-    snow_vs_rain=Tair_corrected[n]
-    snow_vs_rain=np.reshape(snow_vs_rain,(len(snow_vs_rain),))
-    non_snow=np.where(snow_vs_rain>rain_snow_threshold)
-    snow=np.where(snow_vs_rain<=rain_snow_threshold)
-    snow_vs_rain[non_snow]=0
-    snow_vs_rain[snow]=1
-    snowfall=np.multiply(snow_vs_rain,Precip)
-    Snowfall.append(snowfall)
+    Tair[str(elevs[n])]=Tair_array[n]
+    #Snow[str(elevs[n])]=Snow_array[n]
 
-# Sort date and time data and group with results
-Dates=DateTime.astype('U8')
-Dates = np_f.replace(Dates, '/', '')
-x=Dates.astype(float)
-Dates_all=[]
-for n in range(len(temp_diffs)):
-    Dates_all.append(x)
-Snowfall2=[]
-for n in range(len(Snowfall)):
-    s=np.reshape(Snowfall[n],(len(Snowfall[n]),1))
-    Snowfall2.append(s)
-Snowfall=Snowfall2
-all_data=[]
-for n in range(len(temp_diffs)):
-    joined=np.concatenate((Dates_all[n],PDH_all[n],Snowfall[n]),axis=1)
-    all_data.append(joined)
+# Find mean daily PDD and total snowfall for each elevation band
+PDD_daily=Tair.groupby('date',as_index=False).mean()
+PDD_daily['date']=pd.to_datetime(PDD_daily['date'])
+#Snowfall_daily=Snow.groupby('Date').sum()
+#Snowfall_daily['date']=pd.to_datetime(Snowfall_daily['date'])
 
-# Find all unique dates and their indices
-date_test_all=[]
-indice_test_all=[]
-[date_test,indice_test]=np.unique(x, return_index=True)
-date_test_sorted=(x[np.sort(indice_test)])
-indices_all=[]
-for y in range(len(date_test_sorted)):
-    [indices,extracol]=np.where(x==date_test_sorted[y])
-    indices_all.append(indices)
+# Calculate cumulative PDD and Snowfall for each field date, calculated from preceding Sept 1st.
+dates=grouped[['date']]
+dates['date']=pd.to_datetime(dates['date'])
+dates=dates.drop_duplicates()
+for n in range(len(dates)):
+    date=dates.iloc[n,0]
+    if date.month<9: 
+        date_start=str(date.year-1) + "-09-01"
+    else:
+        date_start=str(date.year) + "-09-01"
+    date_end=date.strftime('%Y-%m-%d') 
+    x=PDD_daily[PDD_daily['date'].between(date_start, date_end)]
+    x=x.sum(numeric_only=True).to_frame().T
+    if n==0:
+        PDD_sum=x.copy()
+    else:
+        PDD_sum=pd.concat([PDD_sum,x],ignore_index=True)
+    #y=Snowfall_daily[Snowfall_daily['date'].between(date_start, date_end)]
+    #y=y.sum(numeric_only=True).to_frame().T
+    #if n==0:
+    #    Snowfall_sum=y.copy()
+    #else:
+    #    Snowfall_sum=pd.concat([Snowfall_sum,y],ignore_index=True)
+#Xt=1/(Snowfall_sum/PDD_sum)
+#Xt.insert(0,'date',dates)
+PDD_sum.insert(0,'date',dates)
+#Snowfall_sum.insert(0,'date',dates)
 
-# Extract PHD data for every unique date, for every elevation band
-sorted_PDH_all=[]
-for x in range(len(temp_diffs)):
-    PDH_test=np.ndarray.flatten(PDH_all[x])
-    sorted_PDH=[]
-    for y in range(len(indices_all)):
-        ind_test=indices_all[y]
-        PDH_test2=PDH_test[ind_test]
-        sorted_PDH.append(PDH_test2)
-    sorted_PDH_all.append(sorted_PDH)
-    
-# Extract snowfall data for every unique date, for every elevation band
-sorted_snowfall_all=[]
-for x in range(len(temp_diffs)):
-    snowfall_test=np.ndarray.flatten(Snowfall[x])
-    sorted_snowfall=[]
-    for y in range(len(indices_all)):
-        ind_test=indices_all[y]
-        snowfall_test2=snowfall_test[ind_test]
-        sorted_snowfall.append(snowfall_test2)
-    sorted_snowfall_all.append(sorted_snowfall)
 
-# Find mean daily PDD for each elevation band
-PDD_daily_allsites=[]
-for z in range(len(temp_diffs)):
-    #PDD_daily_test=[sum(x)/len(x) for x in sorted_PDH_all[z]] # having divide by 0 issue here
-    PDD_daily_test=[np.mean(vals) if len(vals) > 0 else np.nan for vals in sorted_PDH_all[z]]
-    PDD_daily_allsites.append(PDD_daily_test)
 
-# Find total daily snowfall for elevation band
-snowfall_daily_allsites=[]
-for z in range(len(temp_diffs)):
-    snowfall_daily_test=[sum(x) for x in sorted_snowfall_all[z]]
-    snowfall_daily_allsites.append(snowfall_daily_test)
-
-# Extract PDD data prior to each of the phases (since preceding September 1st)
-Pre_survey_PDD_all=[]
-for m in range(len(temp_diffs)):
-    Pre_survey_PDD=[]
-    PDD_x=PDD_daily_allsites[m]
-    for n in range(len(survey_dates)):
-        PDD_pre=PDD_x[0:survey_dates[n]]
-        PDD_pre=np.array(PDD_pre)
-        nans=np.argwhere(np.isnan(PDD_pre))
-        PDD_pre[nans]=0
-        Pre_survey_PDD.append(PDD_pre)
-    Pre_survey_PDD_all.append(Pre_survey_PDD)
-
-# Extract snowfall data prior to each of the phases (since preceding September 1st)
-Pre_survey_S_all=[]
-for m in range(len(temp_diffs)):
-    Pre_survey_S=[]
-    S_x=snowfall_daily_allsites[m]
-    for n in range(len(survey_dates)):
-        S_pre=S_x[0:survey_dates[n]]
-        S_pre=np.array(S_pre)
-        nans=np.argwhere(np.isnan(S_pre))
-        S_pre[nans]=0
-        Pre_survey_S.append(S_pre)
-    Pre_survey_S_all.append(Pre_survey_S)
-
-# Find reverse cumulative PDD sum
-reverse_cumulative_PDD_allsites=[]
-for m in range(len(temp_diffs)):
-    reverse_cumulative_PDD=[]
-    PS_PDD=Pre_survey_PDD_all[m]
-    for n in range(len(survey_dates)):
-        PS_PDD_x=PS_PDD[n]
-        reverse_cumulative_PDD_sum=np.cumsum(PS_PDD_x[::-1])[::-1] 
-        reverse_cumulative_PDD.append(reverse_cumulative_PDD_sum)
-    reverse_cumulative_PDD_allsites.append(reverse_cumulative_PDD)
-
-# Extract PDD data prior to each of the phases (since preceding September 1st)
-Pre_survey_PDD_all=[]
-for m in range(len(temp_diffs)):
-    Pre_survey_PDD=[]
-    PDD_x=PDD_daily_allsites[m]
-    for n in range(len(survey_dates)):
-        PDD_pre=PDD_x[0:survey_dates[n]]
-        PDD_pre=np.array(PDD_pre)
-        nans=np.argwhere(np.isnan(PDD_pre))
-        PDD_pre[nans]=0
-        Pre_survey_PDD.append(PDD_pre)
-    Pre_survey_PDD_all.append(Pre_survey_PDD)
-
-# Find total snowfall and PDD sum for each phase and elevation
-total_PDD_sum=[]
-total_S_sum=[]
-for m in range(len(temp_diffs)):
-    total_PDD=[]
-    total_S=[]
-    PS_PDD=Pre_survey_PDD_all[m]
-    PS_S=Pre_survey_S_all[m]
-    for n in range(len(survey_dates)):
-        PS_PDD_x=PS_PDD[n]
-        PS_S_x=PS_S[n]
-        PDD_sum=np.nansum(PS_PDD_x)
-        S_sum=np.nansum(PS_S_x)
-        total_PDD.append(PDD_sum)
-        total_S.append(S_sum)
-    total_PDD_sum.append(total_PDD)
-    total_S_sum.append(total_S)
 
 # Find snow-settling metric (per day)
 MMM=[]
@@ -427,43 +382,7 @@ Total_snowfall_plot.figure.savefig('Total_snowfall_1m_intervals_'+str(extent)+'_
 
 
 
-## Import LiDAR derived input variables and sample for GROUPED locations
-file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv')
-if file.is_file():
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
-    grouped=pd.read_csv('Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv')
-    grouped['year'] = grouped['year'].astype(str)
-else:
-    buffer_distance = 10 # buffer distance around centre point of cardinal plot
-    # Import Bare Earth metrics 
-    s_BE=[]
-    os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/')
-    be_list = ['DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',
-            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',
-            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m.tif']
-    for a in be_list:
-        b=[]
-        src = rasterio.open(a)
-        for x in range(len(grouped)):
-            coords = (grouped.at[x,'easting_m'], grouped.at[x,'northing_m'])
-            point = Point(coords)
-            buffer_poly = point.buffer(buffer_distance)
-            # Create a mask from the buffer geometry. geometry_mask returns True for outside, False for inside
-            mask = rasterio.features.geometry_mask([buffer_poly],out_shape=src.shape,transform=src.transform,invert=False)
-            data = src.read(1) # Read data and apply mask. Read first band
-            sampled_values = data[~mask] # Extract only the masked pixels (where mask is False, i.e., inside buffer). Using ~mask to select True where the buffer is
-            sampled_value = np.nanmean(sampled_values) # Take the mean of all pixels within buffer
-            b.append(sampled_value)
-        s_BE.append(b)
 
-    BE_inputs=['elevation_lidar','slope_lidar','curvature_lidar','northness_lidar','eastness_lidar','canopy_density_lidar','canopy_cover_lidar','canopy_height_lidar']
-    for x in range(len(BE_inputs)):
-        grouped[BE_inputs[x]] = s_BE[x]
 
     
 
