@@ -16,7 +16,7 @@ import cv2
 
 # Import input data --------------------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('E:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('V:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -76,6 +76,10 @@ for n in range(len(phases)):
     x=np.where(BE>avalanche_threshold[n])
     avalanche_elevs.append(x)
 del BE
+
+# Import extent mask without lakes (TEMPORARY OPTIONAL).
+#[R,WS_gaps]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution1)+'m/UpperSeymour_watershed_no_lakes_'+str(resolution1)+'m_SEYPALextent.tif'))
+#notupsey=np.where(WS_gaps==0)
 
 # Calculations -----------------------------------------------------------
 # Set nans
@@ -147,6 +151,7 @@ for n in range(len(phases)):
     # Exclude areas where avalanches are likely to occur
     avalanche_corrected_mask=np.copy(expanded_mask)
     avalanche_corrected_mask[avalanche_elevs[n]]=0
+    #avalanche_corrected_mask[notupsey]=0
     del expanded_mask
     
     # Remove misclassified areas from original snow depth DEMs
