@@ -25,7 +25,6 @@ lidar = var['lidar'][0]
 resolution1 = var['resolution1'][0]
 date = var['date'][0]
 BEversion = var['BEversion'][0]
-glaciers = var['glaciers'][0]
 phases = []
 bias_correction_snow = []
 avalanche_threshold = []
@@ -60,14 +59,11 @@ for n in range(len(phases)):
 for n in range(len(phases)):
     x=SDs[n]
     y=np.where(x>0)
-    x[y]=x[y] + bias_correction_snow[n]
+    x[y]=x[y] + var['bias_correction_snow'][n]
     SDs[n]=x
 
-# Import lakes (and glaciers) mask
-if glaciers == 'Y':
-    [R,lakes_glaciers]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_lakes_glaciers_'+str(resolution1)+'m.tif', bands='all'))
-elif glaciers == 'N':
-    [R,lakes_glaciers]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_lakes_'+str(resolution1)+'m.tif', bands='all'))
+# Import lakes mask
+[R,lakes]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_lakes_'+str(resolution1)+'m.tif', bands='all'))
 
 # Import bare earth and create avalanche mask
 [R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif', bands='all'))
@@ -91,9 +87,9 @@ for n in range(len(phases)):
     SDs[n]=x
 del x,n
 
-# Remove lakes (and glaciers)
-lakes_glaciers[lakes_glaciers<=0]= np.nan
-i=np.where(lakes_glaciers==1)
+# Remove lakes
+lakes[lakes<=0]= np.nan
+i=np.where(lakes==1)
 for n in range(len(phases)):
     SD=SDs[n]
     SD[i]= np.nan

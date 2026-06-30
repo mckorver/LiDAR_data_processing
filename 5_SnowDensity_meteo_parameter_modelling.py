@@ -60,10 +60,10 @@ WSup_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.cs
 WSlow_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv', usecols=['WSlow_elev']))[0])
 
 # Import weather station data
-Tair_up = np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv', usecols=['Tair_up']))
-Tair_low = np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv', usecols=['Tair_low']))
-precip_pipe = np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv', usecols=['PC_low_mm']))
-DateTime=np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv',usecols=['DateTime']))
+Tair_up = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['Tair_up']))
+Tair_low = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['Tair_low']))
+precip_pipe = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['PC_low_mm']))
+DateTime=np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv',usecols=['DateTime']))
 
 # Reformat and check total precip data
 precip_pipe=precip_pipe.astype('float64')
@@ -169,7 +169,8 @@ for x in range(len(temp_diffs)):
 # Find mean daily PDD for each elevation band
 PDD_daily_allsites=[]
 for z in range(len(temp_diffs)):
-    PDD_daily_test=[sum(x)/len(x) for x in sorted_PDH_all[z]]
+    #PDD_daily_test=[sum(x)/len(x) for x in sorted_PDH_all[z]] # having divide by 0 issue here
+    PDD_daily_test=[np.mean(vals) if len(vals) > 0 else np.nan for vals in sorted_PDH_all[z]]
     PDD_daily_allsites.append(PDD_daily_test)
 
 # Find total daily snowfall for elevation band
@@ -309,11 +310,11 @@ Xt=np.nan_to_num(Xt)
 Xt_all=[]
 for n in range(len(Xt)):
     xx=Xt[n]
-    yy=np.copy(elev_data)
+    yy=np.full(elev_data.shape, np.nan)
     for m in range(len(elevs)):
-        x=elevs[m]
-        y=xx[m]
-        yy[yy==x]=y
+        elev = elevs[m]
+        xt_val = xx[m]
+        yy[elev_data == elev] = xt_val
     Xt_all.append(yy)
     print(n)
 del n,x,y,xx,yy,m,Xt,elev_data

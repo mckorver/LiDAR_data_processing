@@ -38,17 +38,6 @@ del x,n
 # Import bare earth
 [R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif', bands='all'))
 
-# Import glacier DEM
-#[R,glacierDEM]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/Comox_glacier_DEM/'+str(extent)+'_Glaciers_BE_'+str(resolution1)+'m.tif', bands='all'))
-#BE[BE<0]= np.nan
-#glacierDEM[glacierDEM<0]= np.nan
-#x=BE
-#i=np.where(glacierDEM>=0)
-#x[i]=glacierDEM[i]
-#New_BE=x
-#os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v3/resolution_'+str(resolution1)+'m/')
-#pyrsgis.export(New_BE,R,filename=str(extent)+'_BE_v3_'+str(resolution1)+'m.tif')
-
 # Import roads
 [R,ROADS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Roads_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_ROADS.tif', bands='all'))
 

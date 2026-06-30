@@ -10,6 +10,8 @@ import pandas as pd
 import math
 import matplotlib.pyplot as plt
 import seaborn as sns
+from datetime import datetime,timedelta
+import utm
 
 # Import input data ------------------------------------------------------------------
 # Import processing variables
@@ -22,100 +24,93 @@ lidar = var['lidar'][0]
 resolution2 = var['resolution2'][0]
 lakemodel = var['lakemodel'][0]
 phases = []
-x = var['phases'][var['phases'].notna()]
-for n in range(len(x)):
-    a = x[n]
-    phases.append(a)
+days_in_season=[]
+def append_fun(a,b):
+    x = var[b][var[b].notna()]
+    for n in range(len(x)):
+        y = x[n]
+        if b == 'days_in_season':
+            a.append(int(y))
+        else:
+            a.append(y)
+append_fun(phases,'phases')
+append_fun(days_in_season,'days_in_season')
+timestamp = []
+for n in range(len(phases)):
+    x = datetime.strptime(year + "-03-01 12:00:00", "%Y-%m-%d %H:%M:%S")
+    y = x + timedelta(days=days_in_season[n])
+    timestamp.append(str(y))
 
-## QAQC field data
-datetimes_field=[]
-datetimes_aco=[]
-eastings=[]
-northings=[]
-depth_ids=[]
-depths=[]
-cores=[]
-densities=[]
-manual_remove=[]
-field_phases=[]
-os.chdir(str(drive)+':/LiDAR_data_processing/Field_data/'+str(watershed)+'/'+str(year))
-for b in range(len(phases)):
-    # Read field data collection coordinates
-    datetime_f=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['plot_datetime'],parse_dates=['plot_datetime']))
-    datetime_f=datetime_f.reshape(len(datetime_f),)
-    datetime_l=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['aco_datetime'],parse_dates=['aco_datetime']))
-    datetime_l=datetime_l.reshape(len(datetime_l),)
-    easting=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['easting_m'])).astype('float64')
-    easting=easting.reshape(len(easting),)
-    northing=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['northing_m'])).astype('float64')
-    northing=northing.reshape(len(northing),)
-    plot_id=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['plot_id']))
-    plot_id=plot_id.reshape(len(plot_id),)
-    depth=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['snow_depth'])).astype('float64')
-    depth=depth.reshape(len(depth),)
-    #core=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['core_length_final'])).astype('float64')
-    #core=core.reshape(len(core),)
-    density=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['density'])).astype('float64')
-    density=density.reshape(len(density),)
-    manual_rem=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(phases[b])+'.csv', usecols=['manual_remove']))
-    manual_rem=manual_rem.reshape(len(manual_rem),)
-    field_phase=np.array(phases[b])
-    field_phase=np.repeat(field_phase,len(easting))
-    datetimes_field.append(datetime_f)
-    datetimes_aco.append(datetime_l)
-    eastings.append(easting)
-    northings.append(northing)
-    depth_ids.append(plot_id)
-    depths.append(depth)
-    #cores.append(core)
-    densities.append(density)
-    manual_remove.append(manual_rem)
-    field_phases.append(field_phase)
+if watershed == 'TSI':
+    region_name = 'Tsitika' 
+elif watershed == 'CRU':
+    region_name = 'Cruickshank'
+elif watershed == 'ENG':
+    region_name = 'Englishman'
+elif watershed == 'MV':
+    region_name = 'Metro Vancouver'
 
-df=pd.DataFrame({"phase":np.concatenate(field_phases),"datetime_field":np.concatenate(datetimes_field),"datetime_aco":np.concatenate(datetimes_aco),
-                 "easting_m":np.concatenate(eastings),"northing_m":np.concatenate(northings),"plot_id":np.concatenate(depth_ids),
-                 "snow_depth":np.concatenate(depths),
-                 "density":np.concatenate(densities), "manual_remove":np.concatenate(manual_remove)})
-df['time_gap_hr']=df['datetime_field']-df['datetime_aco']
-df['time_gap_hr'] = df['time_gap_hr'].dt.total_seconds()/3600
-df['time_gap_hr'] = df['time_gap_hr'].abs().astype('int64')
-df['year'] = df['datetime_field'].dt.year.astype('string')
-df['month'] = df['datetime_field'].dt.month
-df['snow_depth_m'] = df['snow_depth']/100
-
-# QAQC field data
-df=df[(df['density'].notna())&(df['density']>0)]
-df['flag'] = 'AV'
-df.loc[(df['time_gap_hr']>60), 'flag'] = 'time'
-df.loc[(df['manual_remove']=='Y'), 'flag'] = 'manual'
-df.loc[(df['density']>0.8)|(df['density']<0.1), 'flag'] = 'range'
-#df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
-filt=df[(df['flag']=='AV')]
+## Import, edit, and filter field snowplot data -------------------------------------
+os.chdir(str(drive)+':/LiDAR_data_processing/Field_data/')
+field=pd.read_csv('snowplots.csv')
+field=field[field['region_name']==region_name]
+field=field[field['coord_year']==int(year)]
+field=field[field['sample_type']=='Density']
+field=field[field['density_percent'].notnull()]
+field['sample_timestamp'] = field['sample_timestamp'].astype('datetime64[ns]')
+easting, northing, zone_number, zone_letter = utm.from_latlon(
+    field['latitude'].values, 
+    field['longitude'].values)
+field['easting'] = easting
+field['northing'] = northing
+# Add a column indicating ACO or drone flight datetime and filter measurements taken >60 hrs later or earlier
+candidate_cols=[]
+for n in range(len(phases)):
+    field['aco_timestamp'+str(n+1)] = timestamp[n]
+    field['aco_timestamp'+str(n+1)] = field['aco_timestamp'+str(n+1)].astype('datetime64[ns]')
+    candidate_cols.append('aco_timestamp'+str(n+1))
+abs_diff = field[candidate_cols].sub(field['sample_timestamp'], axis=0).abs()
+field['closest_id'] = abs_diff.idxmin(axis=1)
+field['aco_timestamp'] = field.lookup(field.index, field['closest_id']) if hasattr(field, 'lookup') else field.apply(lambda row: row[row['closest_id']], axis=1)
+lst=[]
+for n in range(len(phases)):
+    x = field.loc[(field['aco_timestamp']==timestamp[n])]
+    x['aco_survey'] = phases[n]
+    lst.append(x)
+field = pd.concat(lst, ignore_index=True)
+field['time_gap_hr']=field['sample_timestamp']-field['aco_timestamp']
+field['time_gap_hr'] = field['time_gap_hr'].dt.total_seconds()/3600
+field['time_gap_hr'] = field['time_gap_hr'].abs()
+field['flag'] = 'AV'
+field.loc[(field['time_gap_hr']>60), 'flag'] = 'time'
+field=field.loc[(field['flag']=='AV')]
+for n in range(len(phases)):
+    field = field.drop(columns='aco_timestamp'+str(n+1))
+field = field.drop(columns=['closest_id','time_gap_hr'])
 
 Density_ids=[]
 Density_eastings=[]
 Density_northings=[]
 FieldDensities=[]
 for n in phases:
-    x = filt[(filt['phase']==n)]
-    y = x[x['density'].notnull()]
-    plot_id=np.array(y['plot_id'])
+    x = field[(field['aco_survey']==n)]
+    plot_id=np.array(x['plot_name'])
     plot_id=plot_id.reshape(len(plot_id),)
-    easting=np.array(y['easting_m']).astype('float64')
+    easting=np.array(x['easting']).astype('float64')
     easting=easting.reshape(len(easting),)
-    northing=np.array(y['northing_m']).astype('float64')
+    northing=np.array(x['northing']).astype('float64')
     northing=northing.reshape(len(northing),)
-    density=np.array(y['density']).astype('float64')
+    density=np.array(x['density_percent']).astype('float64')
     density=density.reshape(len(density),)
     Density_ids.append(plot_id)
     Density_eastings.append(easting)
     Density_northings.append(northing)
     FieldDensities.append(density)
-del x,y,n,plot_id,easting,northing,density
+del x,n,plot_id,easting,northing,density
 
 LidarDensities=[] # in g/cm3
 for n in range(len(phases)):
-    x=rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDensity_lakemodel'+str(lakemodel)+'_glaciermodelN.tif')    
+    x=rasterio.open(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Maps/SnowDensity/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDensity_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif')    
     LidarDensities.append(x)
 del n,x
 
@@ -254,6 +249,7 @@ for n in range(len(phases)):
 # For the entire watershed
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Bias_analysis/'+str(watershed)+'/'+str(year)+'/')
 Density_field=pd.DataFrame(list(zip(phases,Density_meandiff,Density_sddiff,Density_rmsediff)),columns=['survey','Density_mean_diff_g*cm^-3','Density_sd_diff_g*cm^-3','Density_rmse_diff_g*cm^-3'])
+Density_field.dropna(subset=['Density_mean_diff_g*cm^-3'], inplace=True)
 Density_field.to_csv(str(extent)+'_field_validation_Density.csv', index=False)
 
 # By plot
@@ -267,26 +263,34 @@ Density_plot.to_csv(str(extent)+'_field_validation_by_plot_Density.csv', index=F
 
 Density_plot = Density_plot[Density_plot['Field_density_mean'] > 0]
 maxvalue=np.round(np.max(Density_plot['Lidar_density_mean']) + 1,decimals = 1)
-g = sns.FacetGrid(Density_plot, col='survey',hue='Plot_id')
+g = sns.FacetGrid(Density_plot, col='survey', hue='Plot_id', col_wrap=3)
 def plot(x, y, xerr, yerr, **kwargs):
     plt.errorbar(x, y, xerr=xerr, yerr=yerr, fmt = 'o', **kwargs)
     plt.grid(True)
 g = g.map(plot, 'Field_density_mean', 'Lidar_density_mean', 'Field_density_sd', 'Lidar_density_sd')
 def plot_one_to_one(x, y, **kwargs):
     ax = plt.gca()
-    min_val = 0.2
-    max_val = 0.55
-    ax.plot([min_val, max_val], [min_val, max_val], linestyle='--',**kwargs)
+    min_val = 0.1
+    max_val = 0.6
+    ax.plot([min_val, max_val], [min_val, max_val], linestyle='--', color='gray', linewidth=1)
 g = g.map(plot_one_to_one, 'Field_density_mean', 'Lidar_density_mean')
 for ax, name in zip(g.axes.flat, Density_field['survey']):
-    value = Density_field[Density_field['survey'] == name]['Density_mean_diff_g*cm^-3'].iloc[0]
-    text_label = f"Mean diff:\n{value:.2f} g/cm3"
+    meandiff = Density_field[Density_field['survey'] == name]['Density_mean_diff_g*cm^-3'].iloc[0]
+    rmse = Density_field[Density_field['survey'] == name]['Density_rmse_diff_g*cm^-3'].iloc[0]
+    text_label = f"Mean diff: {meandiff:.2f} g*cm^-3\nRMSE: {rmse:.2f} g*cm^-3"
     # Add text using ax.text(x_pos, y_pos, text)
     # The coordinates (x, y) are in data units for that specific subplot
-    ax.text(0.40, maxvalue-1.15, text_label, fontsize=9, color='black', ha='left', va='center')
+    ax.text(0.30, maxvalue-1.2, text_label, fontsize=9, color='black', ha='left', va='center')
 g.set_xlabels("Mean Density (Field) [g*cm^-3]")
 g.set_ylabels("Mean Density (LiDAR) [g*cm^-3]")
 g.add_legend(title="Plot ID")
+for ax in g.axes.flat:
+    ax.set_xlim(0.15, 0.55)
+    ax.set_ylim(0.15, 0.55)
+    ax.set_aspect('equal')
+    ticks = np.arange(0.2, 0.6, 0.1)
+    ax.set_xticks(ticks)
+    ax.set_yticks(ticks)
 plt.savefig(
     f"{drive}:/LiDAR_data_processing/{lidar}/Bias_analysis/{watershed}/{year}/"
     f"Plot_density_validation.png")

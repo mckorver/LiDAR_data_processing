@@ -17,10 +17,13 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.tree import plot_tree
 import joblib
+import utm
+import pyrsgis
 
 # Import processing variables
 var = pd.read_csv('K:/LiDAR_data_processing/ACO/Density_modelling/ML_model_processing_variables.csv', dtype={'years':str, 'resolution1':str, 'BEversion':str, 'CANversion':str, 'DENSversion':str})
 watershed = var['watershed'][0]
+extent = var['extent'][0]
 drive = var['drive'][0]
 lidar = var['lidar'][0]
 resolution1 = var['resolution1'][0]
@@ -48,114 +51,131 @@ for n in range(len(phase)):
         x='P'+str(m+1)
         a.append(x)
     phases.append(a)
+if watershed == 'TSI':
+    region_name = 'Tsitika' 
+elif watershed == 'CRU':
+    region_name = 'Cruickshank'
+elif watershed == 'ENG':
+    region_name = 'Englishman'
+elif watershed == 'MV':
+    region_name = 'Metro Vancouver'
+# RAIN-SNOW THRESHOLD (according to Jennings et al., 2018)
+if watershed == 'TSI':
+    rain_snow_threshold=0.98 
+elif watershed == 'CRU':
+    rain_snow_threshold=0.90
+elif watershed == 'ENG':
+    rain_snow_threshold=0.91
+elif watershed == 'MV':
+    rain_snow_threshold=0.97
 
-## QAQC field data
-datetimes_field=[]
-datetimes_aco=[]
-eastings=[]
-northings=[]
-plot_ids=[]
-plot_types=[]
-card_dirs=[]
-depths=[]
-cores=[]
-densities=[]
-manual_remove=[]
-field_phases=[]
-for a in range(len(years)):
-    os.chdir(str(drive)+':/LiDAR_data_processing/Field_data/'+str(watershed)+'/'+str(years[a]))
-    for b in range(len(phases[a])):
-        # Read field data collection coordinates
-        datetime_f=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['plot_datetime'],parse_dates=['plot_datetime']))
-        datetime_f=datetime_f.reshape(len(datetime_f),)
-        datetime_l=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['aco_datetime'],parse_dates=['aco_datetime']))
-        datetime_l=datetime_l.reshape(len(datetime_l),)
-        easting=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['easting_m'])).astype('float64')
-        easting=easting.reshape(len(easting),)
-        northing=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['northing_m'])).astype('float64')
-        northing=northing.reshape(len(northing),)
-        plot_id=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['plot_id']))
-        plot_id=plot_id.reshape(len(plot_id),)
-        plot_type=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['plot_type']))
-        plot_type=plot_type.reshape(len(plot_type),)
-        cardinal=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['cardinal']))
-        cardinal=cardinal.reshape(len(cardinal),)
-        depth=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['snow_depth'])).astype('float64')
-        depth=depth.reshape(len(depth),)
-        core=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['core_length_final'])).astype('float64')
-        core=core.reshape(len(core),)
-        density=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['density'])).astype('float64')
-        density=density.reshape(len(density),)
-        manual_rem=np.array(pd.read_csv('Field_data_'+str(watershed)+'_'+str(years[a])+'_'+str(phases[a][b])+'.csv', usecols=['manual_remove']))
-        manual_rem=manual_rem.reshape(len(manual_rem),)
-        field_phase=np.array(phases[a][b])
-        field_phase=np.repeat(field_phase,len(easting))
-        datetimes_field.append(datetime_f)
-        datetimes_aco.append(datetime_l)
-        eastings.append(easting)
-        northings.append(northing)
-        plot_ids.append(plot_id)
-        plot_types.append(plot_type)
-        card_dirs.append(cardinal)
-        depths.append(depth)
-        cores.append(core)
-        densities.append(density)
-        manual_remove.append(manual_rem)
-        field_phases.append(field_phase)
+#region Field data
+## Import and format field snowplot and snowcourse data------------------------------------------------------------------------------------------------
+os.chdir(str(drive)+':/LiDAR_data_processing/Field_data/')
+plots=pd.read_csv('snowplots.csv')
+plots=plots[plots['region_name']==region_name]
+plots['datetime'] = plots['sample_timestamp'].astype('datetime64[ns]')
+plots['date']=plots['datetime'].dt.date
+easting, northing, zone_number, zone_letter = utm.from_latlon(
+    plots['latitude'].values, 
+    plots['longitude'].values)
+plots['easting']=easting
+plots['northing']=northing
+plots['year']=plots['datetime'].dt.year
+plots['water_year']=np.where(plots['datetime'].dt.month.isin(np.arange(1,9)),
+                             plots['year'], plots['year']+1)
+plots['coord_water_year']=plots['coord_year']
+plots['site_name']=plots['plot_name']
+a=plots[plots['sample_type']=='Density']
+b=plots[plots['sample_type']=='Depth']
+c=pd.merge(a.drop(columns=['latitude','longitude','easting','northing','probe_depth_cm']), # Merge associated (same location, same datetime) Density and Depth measurements. 
+           b[['datetime','direction','distance','probe_depth_cm','easting','northing']], 
+           on=['datetime','direction','distance'], how='left')
+d=c[c['probe_depth_cm'].isna()]
+e=pd.merge(d[['id']],a[['id','easting','northing']], on='id', how='left') # We use the coordinates of the Depth measurements. If no Depth meas is available, we use the core depth of the density meas.
+plots=pd.concat([pd.merge(e,d.drop(columns=['easting','northing']), on='id', how='inner'),
+             c[c['probe_depth_cm'].notna()]],
+             ignore_index=True)
+plots['snow_depth_m']=plots['probe_depth_cm'].combine_first(plots['core_depth_cm'])/100
+plots['sample_type'] = 'snowplot'
+plots['core_number'] = np.nan
+plots=plots[['id','sub_id','date','datetime','water_year','coord_water_year','region_name','sample_type',
+             'site_name','easting','northing','direction', 'distance','core_number',
+             'snow_depth_m','density_percent','swe_cm','elevation_m','probe_depth_cm','notes' ]]
+del a,b,c,d,e
 
-df=pd.DataFrame({"phase":np.concatenate(field_phases),"datetime_field":np.concatenate(datetimes_field),"datetime_aco":np.concatenate(datetimes_aco),
-                 "easting_m":np.concatenate(eastings),"northing_m":np.concatenate(northings),
-                 "plot_id":np.concatenate(plot_ids),"plot_type":np.concatenate(plot_types),"cardinal":np.concatenate(card_dirs),
-                 "snow_depth":np.concatenate(depths),"core_depth":np.concatenate(cores),
-                 "density":np.concatenate(densities), "manual_remove":np.concatenate(manual_remove)})
-df['datetime_field'] = df['datetime_field'].astype('datetime64[ns]')
-df['datetime_aco'] = df['datetime_aco'].astype('datetime64[ns]')
-df['time_gap_hr']=df['datetime_field']-df['datetime_aco']
-df['time_gap_hr'] = df['time_gap_hr'].dt.total_seconds()/3600
-df['time_gap_hr'] = df['time_gap_hr'].abs()
-df['year'] = df['datetime_field'].dt.year.astype('string')
-df['day1'] = pd.to_datetime(df['year']+"-03-01 12:00:00")
-df['day_in_season'] = df['datetime_aco'] - df['day1']
-df['day_in_season'] = df['day_in_season'].dt.total_seconds()/86400
-df['snow_depth_m'] = df['snow_depth']/100
+courses=pd.read_csv('snowcourse.csv')
+courses=courses[courses['region_name']==region_name]
+courses['datetime'] = courses['date'].astype('datetime64[ns]')
+courses['date']=courses['datetime'].dt.date
+courses=courses[courses['latitude'].notna()]
+courses=courses[courses['density_percent'].notna()]
+easting, northing, zone_number, zone_letter = utm.from_latlon(
+    courses['latitude'].values, 
+    courses['longitude'].values)
+courses['easting']=easting
+courses['northing']=northing
+courses['sample_type'] = 'snowcourse'
+courses['site_name']=courses['course_name']
+courses['direction']=np.nan
+courses['distance']=np.nan
+courses['probe_depth_cm']=np.nan
+courses['notes']=np.nan
+courses['snow_depth_m']=courses['core_depth_cm']/100
+courses=courses[['id','sub_id','date','datetime','water_year','coord_water_year','region_name','sample_type',
+             'site_name','easting','northing','direction','distance','core_number',
+             'snow_depth_m','density_percent','swe_cm','elevation_m','probe_depth_cm','notes' ]]
 
-# QAQC field data
-df=df[(df['density'].notna())&(df['density']>0)]
-df['flag'] = 'AV'
-df.loc[(df['time_gap_hr']>60), 'flag'] = 'time'
-df.loc[(df['manual_remove']=='Y'), 'flag'] = 'manual'
-df.loc[(df['density']>0.8)|(df['density']<0.1), 'flag'] = 'range'
-df.loc[(df['snow_depth']-df['core_depth']<-5)|(df['snow_depth']/df['core_depth']>=2), 'flag'] = 'core'
-filt=df.loc[(df['flag']=='AV')]
+## QAQC field snowplot and snowcourse data
+plots['flag'] = 'AV'
+plots.loc[(plots['probe_depth_cm'].isna()), 'flag'] = 'snow depth from core'
+plots.loc[(plots['water_year']!=plots['coord_water_year']), 'flag'] = 'coord uncertainty'
+plots.loc[(plots['density_percent']>0.8)|(plots['density_percent']<0.1), 'flag'] = 'out of range'
+#filt.loc[(filt['snow_depth']-filt['core_depth']<-5)|(filt['snow_depth']/filt['core_depth']>=2), 'flag'] = 'core'
+plot_filt=plots[(plots['flag']=='AV')|(plots['flag']=='snow depth from core')]
+courses['flag'] = 'AV'
+courses.loc[(courses['water_year']!=courses['coord_water_year']), 'flag'] = 'coord uncertainty'
+courses.loc[(courses['density_percent']>80)|(courses['density_percent']<10), 'flag'] = 'out of range'
+cours_filt=courses[(courses['flag']=='AV')]
+filt=pd.concat([plot_filt, cours_filt], ignore_index=True)
 
-# Separate between cardinal field plots and point field plots
-temp=filt.drop(columns=['snow_depth','flag','manual_remove','time_gap_hr'])
-#grouped.loc[grouped['plot_type'].isna(), 'plot_type'] = 'Cardinal 10 m'
-#grouped.loc[grouped['plot_type']=='Cardinal 30 m', 'plot_type'] = 'Cardinal 10 m'
-grouped=temp.loc[(temp['plot_type']=='Cardinal 10 m')]
-points=temp.loc[(temp['plot_type']=='snow_course')]
-points=points[['phase','plot_id','year','easting_m','northing_m','density','snow_depth_m','day_in_season']].reset_index()
+# Get centre coordinates and average densities and snowdepths by plot or by course
+plot_gr=filt[filt['sample_type']=='snowplot']
+plot_gr=plot_gr[['easting','northing','direction','distance','site_name','date','water_year','snow_depth_m','density_percent','swe_cm']]
+plot_gr['easting']=np.where((plot_gr['direction']=='Centre')|(plot_gr['direction']=='S')|(plot_gr['direction']=='N'),plot_gr['easting'],
+                                np.where(plot_gr['direction']=='W',(plot_gr['easting']-plot_gr['distance']),
+                                     np.where(plot_gr['direction']=='E',(plot_gr['easting']+plot_gr['distance']),
+                                              np.where((plot_gr['direction']=='SE')|(plot_gr['direction']=='NE'),(plot_gr['easting']+(plot_gr['distance']*0.7)),
+                                                       np.where((plot_gr['direction']=='SE')|(plot_gr['direction']=='NE'),(plot_gr['easting']-(plot_gr['distance']*0.7)),np.nan)))))
+plot_gr['northing']=np.where((plot_gr['direction']=='Centre')|(plot_gr['direction']=='W')|(plot_gr['direction']=='E'),plot_gr['northing'],
+                                np.where(plot_gr['direction']=='S',(plot_gr['northing']-plot_gr['distance']),
+                                     np.where(plot_gr['direction']=='N',(plot_gr['northing']+plot_gr['distance']),
+                                              np.where((plot_gr['direction']=='NE')|(plot_gr['direction']=='NW'),(plot_gr['northing']+(plot_gr['distance']*0.7)),
+                                                       np.where((plot_gr['direction']=='SE')|(plot_gr['direction']=='SW'),(plot_gr['northing']-(plot_gr['distance']*0.7)),np.nan)))))
+plot_gr=plot_gr.groupby(['site_name','date']).mean().reset_index()
+plot_gr=plot_gr.drop(columns='distance')
+plot_gr['sample_type'] = 'snowplot'
 
-# Get centre coordinates
-grouped=grouped[['easting_m','northing_m','phase','cardinal','plot_id','year','density','snow_depth_m','day_in_season']]
-grouped['easting_m']=np.where(grouped['cardinal']!='Centre',np.nan,grouped['easting_m'])
-grouped['northing_m']=np.where(grouped['cardinal']!='Centre',np.nan,grouped['northing_m'])
-grouped_final=grouped.groupby(['phase','plot_id','year']).mean().reset_index()
+course_gr=filt[filt['sample_type']=='snowcourse']
+course_gr=course_gr[['easting','northing','site_name','date','water_year','snow_depth_m','density_percent','swe_cm']]
+course_gr=course_gr.groupby(['site_name','date']).mean().reset_index()
+course_gr['sample_type'] = 'snowcourse'
+grouped=pd.concat((plot_gr,course_gr),ignore_index=True)
+grouped['water_year']=grouped['water_year'].astype(int)
+grouped=grouped.sort_values(by='date')
 
-# Save field data
+# Save plots data
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
-df.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'.csv',index=False)
-filt.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_filtered.csv',index=False)
-grouped_final.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_grouped.csv',index=False)
-points.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_points.csv',index=False)
-del datetimes_field,datetimes_aco,eastings,northings,depths,densities,manual_remove,field_phases
+filt.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'.csv',index=False)
+grouped.to_csv('Field_data_'+str(watershed)+'_v'+str(DENSversion)+'_grouped.csv',index=False)
+#endregion
 
-## Import LiDAR derived input variables and sample for GROUPED field locations
-file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv')
+#region Import LiDAR derived input variables and sample for field locations
+file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/Input_variables_'+'v'+str(DENSversion)+'.csv')
 if file.is_file():
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
-    grouped_final=pd.read_csv('Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv')
-    grouped_final['year'] = grouped_final['year'].astype(str)
+    grouped=pd.read_csv('Input_variables_'+'v'+str(DENSversion)+'.csv')
+    grouped['year'] = grouped['year'].astype(str)
 else:
     buffer_distance = 10 # buffer distance around centre point of cardinal plot
     # Import Bare Earth metrics 
@@ -172,8 +192,8 @@ else:
     for a in be_list:
         b=[]
         src = rasterio.open(a)
-        for x in range(len(grouped_final)):
-            coords = (grouped_final.at[x,'easting_m'], grouped_final.at[x,'northing_m'])
+        for x in range(len(grouped)):
+            coords = (grouped.at[x,'easting'], grouped.at[x,'northing'])
             point = Point(coords)
             buffer_poly = point.buffer(buffer_distance)
             # Create a mask from the buffer geometry. geometry_mask returns True for outside, False for inside
@@ -186,114 +206,185 @@ else:
 
     BE_inputs=['elevation_lidar','slope_lidar','curvature_lidar','northness_lidar','eastness_lidar','canopy_density_lidar','canopy_cover_lidar','canopy_height_lidar']
     for x in range(len(BE_inputs)):
-        grouped_final[BE_inputs[x]] = s_BE[x]
-
-    # Import meteorological parameters
-    s_meteo=[]
-    meteo_list = ['Distributed_Xt_','Distributed_PDD_','Distributed_Snowfall_']
-    for m in range(len(years)):
-        list3=[]
-        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(years[m])+'/Output/resolution_'+str(resolution1)+'m/')
-        for n in range(len(phases[m])):
-            list2=[]
-            loc = grouped_final[(grouped_final['year'] == str(years[m])) & (grouped_final['phase'] == str(phases[m][n]))]
-            index=loc.index.tolist()
-            for b in index:
-                list1=[]
-                list1.append(b)
-                coords = (loc.at[b,'easting_m'], loc.at[b,'northing_m'])
-                point = Point(coords)
-                buffer_poly = point.buffer(buffer_distance)
-                # Create a mask from the buffer geometry. geometry_mask returns True for outside, False for inside
-                for a in meteo_list:
-                    src = rasterio.open(a+str(watershed)+'_'+str(years[m])+'_'+str(phases[m][n])+'.tif') 
-                    mask = rasterio.features.geometry_mask([buffer_poly],out_shape=src.shape,transform=src.transform,invert=False)
-                    data = src.read(1) # Read data and apply mask. Read first band
-                    sampled_values = data[~mask] # Extract only the masked pixels (where mask is False, i.e., inside buffer). Using ~mask to select True where the buffer is
-                    sampled_value = sampled_values.mean() # Take the mean of all pixels within buffer
-                    list1.append(sampled_value)
-                list2.append(list1)
-            list3.extend(list2)
-        s_meteo.extend(list3)
-
-    pd_meteo=pd.DataFrame(s_meteo,columns=['index','Xt_model','PDD_model','Snowfall_model']).set_index('index')
-    grouped_final = pd.merge(grouped_final, pd_meteo, left_index=True, right_index=True, how='inner')
+        grouped[BE_inputs[x]] = s_BE[x]
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
-    grouped_final.to_csv('Input_variables_'+'v'+str(DENSversion)+'_cardinal.csv',index=False)
+    grouped.to_csv('Input_variables_'+'v'+str(DENSversion)+'.csv',index=False)
+#endregion
 
-## Import LiDAR derived input variables and sample for POINTS field locations
-file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/Input_variables_'+'v'+str(DENSversion)+'_points.csv')
-if file.is_file():
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
-    points=pd.read_csv('Input_variables_'+'v'+str(DENSversion)+'_points.csv')
-    points['year'] = points['year'].astype(str)
-else:
-    buffer_distance = 2 # buffer distance around centre point of cardinal plot
-    # Import Bare Earth metrics 
-    s_BE=[]
-    os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/')
-    be_list = ['DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Slope_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Curvature_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_Eastness_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif',
-            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',
-            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',
-            'Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m/'+str(watershed)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m.tif']
-    for a in be_list:
-        b=[]
-        src = rasterio.open(a)
-        for x in range(len(points)):
-            coords = (points.at[x,'easting_m'], points.at[x,'northing_m'])
-            point = Point(coords)
-            buffer_poly = point.buffer(buffer_distance)
-            # Create a mask from the buffer geometry. geometry_mask returns True for outside, False for inside
-            mask = rasterio.features.geometry_mask([buffer_poly],out_shape=src.shape,transform=src.transform,invert=False)
-            data = src.read(1) # Read data and apply mask. Read first band
-            sampled_values = data[~mask] # Extract only the masked pixels (where mask is False, i.e., inside buffer). Using ~mask to select True where the buffer is
-            sampled_value = sampled_values.mean() # Take the mean of all pixels within buffer
-            b.append(sampled_value)
-        s_BE.append(b)
+#region Xt processing
+## Get Xt for every 1m elevation band, every 'day in season' (day since Sep 1st) of each water year
 
-    BE_inputs=['elevation_lidar','slope_lidar','curvature_lidar','northness_lidar','eastness_lidar','canopy_density_lidar','canopy_cover_lidar','canopy_height_lidar']
-    for x in range(len(BE_inputs)):
-        points[BE_inputs[x]] = s_BE[x]
+# Import bare earth and get min and max elev
+[R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution1)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution1)+'m.tif', bands='all'))
+nans=np.where(BE<0)
+BE[nans]=np.nan
+BE=BE.astype('float64')
+del nans
+min_elev=np.nanmin(BE)
+min_elev=np.floor(min_elev).astype(int)
+max_elev=np.nanmax(BE)
+max_elev=np.ceil(max_elev).astype(int)
 
-    # Import meteorological parameters
-    s_meteo=[]
-    meteo_list = ['Distributed_Xt_','Distributed_PDD_','Distributed_Snowfall_']
-    for m in range(len(years)):
-        list3=[]
-        os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(years[m])+'/Output/resolution_'+str(resolution1)+'m/')
-        for n in range(len(phases[m])):
-            list2=[]
-            loc = points[(points['year'] == str(years[m])) & (points['phase'] == str(phases[m][n]))]
-            index=loc.index.tolist()
-            for b in index:
-                list1=[]
-                list1.append(b)
-                coords = (loc.at[b,'easting_m'], loc.at[b,'northing_m'])
-                point = Point(coords)
-                buffer_poly = point.buffer(buffer_distance)
-                # Create a mask from the buffer geometry. geometry_mask returns True for outside, False for inside
-                for a in meteo_list:
-                    src = rasterio.open(a+str(watershed)+'_'+str(years[m])+'_'+str(phases[m][n])+'.tif') 
-                    mask = rasterio.features.geometry_mask([buffer_poly],out_shape=src.shape,transform=src.transform,invert=False)
-                    data = src.read(1) # Read data and apply mask. Read first band
-                    sampled_values = data[~mask] # Extract only the masked pixels (where mask is False, i.e., inside buffer). Using ~mask to select True where the buffer is
-                    sampled_value = sampled_values.mean() # Take the mean of all pixels within buffer
-                    list1.append(sampled_value)
-                list2.append(list1)
-            list3.extend(list2)
-        s_meteo.extend(list3)
+# Import station metadata
+os.chdir(str(drive)+':/LiDAR_data_processing/Weather_station_data/'+str(watershed)+'/')
+metadata = pd.read_csv('Metadata_'+str(watershed)+'.csv')
+WSup_airT=metadata['WSup_airT'][0]
+WSlow_airT=metadata['WSlow_airT'][0]
+WSup_precip=metadata['WSup_precip'][0]
+WSlow_precip=metadata['WSlow_precip'][0]
+WSup_airT_elev=metadata['WSup_airT_elev'][0]
+WSlow_airT_elev=metadata['WSlow_airT_elev'][0]
+WSup_precip_elev=metadata['WSup_precip_elev'][0]
+WSlow_precip_elev=metadata['WSlow_precip_elev'][0]
 
-    pd_meteo=pd.DataFrame(s_meteo,columns=['index','Xt_model','PDD_model','Snowfall_model']).set_index('index')
-    points = pd.merge(points, pd_meteo, left_index=True, right_index=True, how='inner')
-    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
-    points.to_csv('Input_variables_'+'v'+str(DENSversion)+'_points.csv',index=False)
+# Import weather station data
+Tair_up = pd.read_csv('density_model_airtemp/'+WSup_airT+'_mlr_results.csv')
+Tair_up['Tair_up']=Tair_up['observed'].fillna(Tair_up['predicted'])
+Tair_low = pd.read_csv('density_model_airtemp/'+WSlow_airT+'_mlr_results.csv')
+Tair_low['Tair_low']=Tair_low['observed'].fillna(Tair_low['predicted'])
+Wx=pd.merge(Tair_up[['DateTime','Tair_up']],Tair_low[['DateTime','Tair_low']], on ='DateTime', how='inner')
+Wx['DateTime']=Wx['DateTime'].astype('datetime64[ns]')
+Wx['date']=Wx['DateTime'].dt.strftime('%Y-%m-%d')
 
-# Combine points and grouped data
-grouped_final=pd.concat([grouped_final,points])
+#precip_pipe = np.array(pd.read_csv('WS_data_'+str(watershed)+'.csv', usecols=['PC_up_mm']))
+
+# Reformat total precip data
+#precip_pipe=precip_pipe.astype('float64')
+#df=pd.DataFrame(precip_pipe) 
+#Precip=np.array(df).flatten()
+#del x,n,df,precip_pipe
+
+# Calculations -----------------------------------------------------------------------------
+# Calculate air temperature for each elevation and each timestamp based on atmospheric lapse rate
+# Set all negative airTemps to 0 so that PDH (positive degree hour) sum can be calculated
+lapse_rate = np.array((Wx['Tair_up']-Wx['Tair_low'])/(WSup_airT_elev-WSlow_airT_elev))
+elevs = np.arange(start=min_elev, stop=max_elev, step=1) 
+Tair_array=[]
+for n in range(len(elevs)):
+    x=np.array(((elevs[n]-WSup_airT_elev)*lapse_rate)+np.array(Wx['Tair_up']))
+    x[x<0]=0
+    Tair_array.append(x)
+
+# Calculate snowfall for each elevation and each timestamp
+#Snow_array=[]
+#for n in range(len(elevs)):
+#    snow_vs_rain=Tair_array[n]
+#    snow_vs_rain=np.reshape(snow_vs_rain,(len(snow_vs_rain),))
+#    non_snow=np.where(snow_vs_rain>rain_snow_threshold)
+#    snow=np.where(snow_vs_rain<=rain_snow_threshold)
+#    snow_vs_rain[non_snow]=0
+#    snow_vs_rain[snow]=1
+#    snowfall=np.multiply(snow_vs_rain,Precip)
+#    Snow_array.append(snowfall)
+
+Tair=Wx[['date']]
+Snow=Wx[['date']]
+for n in range(len(elevs)):
+    Tair[str(elevs[n])]=Tair_array[n]
+    #Snow[str(elevs[n])]=Snow_array[n]
+
+# Find mean daily PDD and total snowfall for each elevation band
+PDD_daily=Tair.groupby('date',as_index=False).mean()
+PDD_daily['date']=pd.to_datetime(PDD_daily['date'])
+#Snowfall_daily=Snow.groupby('Date').sum()
+#Snowfall_daily['date']=pd.to_datetime(Snowfall_daily['date'])
+
+# Calculate cumulative PDD and Snowfall for each field date, calculated from preceding Sept 1st.
+dates=grouped[['date']]
+dates['date']=pd.to_datetime(dates['date'])
+dates=dates.drop_duplicates()
+for n in range(len(dates)):
+    date=dates.iloc[n,0]
+    if date.month<9: 
+        date_start=str(date.year-1) + "-09-01"
+    else:
+        date_start=str(date.year) + "-09-01"
+    date_end=date.strftime('%Y-%m-%d') 
+    x=PDD_daily[PDD_daily['date'].between(date_start, date_end)]
+    x=x.sum(numeric_only=True).to_frame().T
+    if n==0:
+        PDD_sum=x.copy()
+    else:
+        PDD_sum=pd.concat([PDD_sum,x],ignore_index=True)
+    #y=Snowfall_daily[Snowfall_daily['date'].between(date_start, date_end)]
+    #y=y.sum(numeric_only=True).to_frame().T
+    #if n==0:
+    #    Snowfall_sum=y.copy()
+    #else:
+    #    Snowfall_sum=pd.concat([Snowfall_sum,y],ignore_index=True)
+#Xt=1/(Snowfall_sum/PDD_sum)
+#Xt.insert(0,'date',dates)
+PDD_sum.insert(0,'date',dates)
+#Snowfall_sum.insert(0,'date',dates)
+
+
+
+
+# Find snow-settling metric (per day)
+MMM=[]
+for m in range(len(temp_diffs)):
+    PDD_xx=reverse_cumulative_PDD_allsites[m]
+    S_xx=Pre_survey_S_all[m]
+    MM=[]
+    for n in range(len(survey_dates)):
+        PDD_yy=PDD_xx[n]
+        S_yy=S_xx[n]
+        np.seterr(divide='ignore',invalid='ignore')
+        M=np.divide(S_yy,PDD_yy)
+        MM.append(M)
+    MMM.append(MM)
+
+# Find snow settling-metric (total for each phase, for each elevation)
+metric=[]
+for z in range(len(temp_diffs)):
+    MMMM=[sum(x)/len(x) for x in MMM[z]]
+    np.seterr(divide='ignore',invalid='ignore')
+    ones=np.divide(MMMM,MMMM)
+    MMMM=np.divide(ones,MMMM)
+    metric.append(MMMM)
+
+# Output ---------------------------------------------------------------------------------------------------
+Xt=np.array(metric)
+PDD_sum=np.array(total_PDD_sum)
+Total_snowfall=np.array(total_S_sum)
+Xt2=[]
+for n in range(len(Xt)):
+    x=Xt[n]
+    nans=np.argwhere(np.isnan(x))
+    x[nans]=0
+    Xt2.append(x)
+Xt=np.array(Xt2)
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output')
+Xt_save=pd.DataFrame(Xt,columns=phases)
+Xt_save.insert(0, "Elevation",elevs)
+Xt_save.to_csv("Xt_1m_intervals_"+str(extent)+"_"+str(year)+".csv", index = False)
+PDD_sum_save=pd.DataFrame(PDD_sum,columns=phases)
+PDD_sum_save.insert(0, "Elevation",elevs)
+PDD_sum_save.to_csv("PDD_1m_intervals_"+str(extent)+"_"+str(year)+".csv", index = False)
+Total_snowfall_save=pd.DataFrame(Total_snowfall,columns=phases)
+Total_snowfall_save.insert(0, "Elevation",elevs)
+Total_snowfall_save.to_csv("S_1m_intervals_"+str(extent)+"_"+str(year)+".csv", index = False)
+
+Xt_plot = Xt_save.plot(kind='line',x='Elevation',color=['red','blue','green'])
+Xt_plot.set_ylabel('Xt')
+Xt_plot.figure.savefig('Xt_1m_intervals_'+str(extent)+'_'+str(year)+'.png')
+PDD_plot = PDD_sum_save.plot(kind='line',x='Elevation',color=['red','blue','green'])
+PDD_plot.set_ylabel('PDD')
+PDD_plot.figure.savefig('PDD_1m_intervals_'+str(extent)+'_'+str(year)+'.png')
+Total_snowfall_plot = Total_snowfall_save.plot(kind='line',x='Elevation',color=['red','blue','green'])
+Total_snowfall_plot.set_ylabel('Total snowfall')
+Total_snowfall_plot.figure.savefig('Total_snowfall_1m_intervals_'+str(extent)+'_'+str(year)+'.png')
+
+
+#endregion
+
+
+
+
+
+
+
+    
 
 # Prepare testing and training data for RF model
 y=np.array(grouped_final['density'])
@@ -351,7 +442,7 @@ feature_importance_df = pd.DataFrame({'Feature': feature_names, 'Importance': im
 feature_importance_df = feature_importance_df.sort_values(by='Importance', ascending=False)
 
 # Output ---------------------------------------------------------------------------------------------------------------
-# Save field data, filtered field data, and model input variables (field data linked to lidar metrics)
+# Save plots data, filtered plots data, and model input variables (plots data linked to lidar metrics)
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
 grouped_final.to_csv('Input_variables_'+'v'+str(DENSversion)+'.csv',index=False)
 

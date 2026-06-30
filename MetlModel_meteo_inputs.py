@@ -50,20 +50,20 @@ max_elev=np.ceil(max_elev).astype(int)
 
 # Import required metadata
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year))
-survey_dates=[]
-for n in phases:
-    x=pd.read_csv('Metadata_'+str(extent)+'_'+str(year)+'.csv')
-    y=x[x['survey']==n]
-    y=y['survey_days'].iloc[0]
-    survey_dates.append(y)
-WSup_elev=int(np.array(pd.read_csv('Metadata_'+str(extent)+'_'+str(year)+'.csv', usecols=['WSup_elev']))[0])
-WSlow_elev=int(np.array(pd.read_csv('Metadata_'+str(extent)+'_'+str(year)+'.csv', usecols=['WSlow_elev']))[0])
+#survey_dates=[]
+#for n in phases:
+#   x=pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv')
+#    y=x[x['survey']==n]
+#    y=y['survey_days'].iloc[0]
+#    survey_dates.append(y)
+WSup_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv', usecols=['WSup_elev']))[0])
+WSlow_elev=int(np.array(pd.read_csv('Metadata_'+str(watershed)+'_'+str(year)+'.csv', usecols=['WSlow_elev']))[0])
 
 # Import weather station data
-Tair_up = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['Tair_up']))
-Tair_low = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['Tair_low']))
-precip_pipe = np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv', usecols=['PC_up_mm']))
-DateTime=np.array(pd.read_csv('WS_data_'+str(extent)+'_'+str(year)+'.csv',usecols=['DateTime']))
+Tair_up = np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv', usecols=['Tair_up']))
+Tair_low = np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv', usecols=['Tair_low']))
+precip_pipe = np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv', usecols=['PC_up_mm']))
+DateTime=np.array(pd.read_csv('WS_data_'+str(watershed)+'_'+str(year)+'.csv',usecols=['DateTime']))
 
 # Reformat and check total precip data
 precip_pipe=precip_pipe.astype('float64')
@@ -185,7 +185,7 @@ Daily_snowfall=np.array(snowfall_daily_allsites)
 Daily_snowfall=Daily_snowfall/10
 Daily_snowfall=np.transpose(Daily_snowfall)
 
-os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Figure_table_production/Future_SWE/INPUTS')
+os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Future_SWE/INPUTS')
 PDD_sum_save=pd.DataFrame(PDD_daily_elev,columns=elevs)
 PDD_sum_save.to_csv("PDD_daily_allsites_"+str(year)+".csv", index = False)
 Total_snowfall_save=pd.DataFrame(Daily_snowfall,columns=elevs)
