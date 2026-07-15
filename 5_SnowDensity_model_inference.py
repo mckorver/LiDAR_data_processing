@@ -14,10 +14,11 @@ import rasterio
 from rasterio import features
 from rasterstats import zonal_stats
 from pathlib import Path
+from datetime import datetime
 
 # Import data -----------------------------------------------------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('V:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str, 'DENSversion':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str, 'DENSversion':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -31,18 +32,18 @@ lakemodel = var['lakemodel'][0]
 DENSversion = var['DENSversion'][0]
 bias_correction_dens = []
 phases=[]
-days_in_season=[]
+dates=[]
 def append_fun(a,b):
     x = var[b][var[b].notna()]
     for n in range(len(x)):
         y = x[n]
-        if b == 'days_in_season':
+        if isinstance(y, float):
             a.append(int(y))
         else:
             a.append(y)
 append_fun(bias_correction_dens,'bias_correction_dens')
 append_fun(phases,'phases')
-append_fun(days_in_season,'days_in_season')
+append_fun(dates,'dates')
 
 # Import snow density model
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/ML_density_model/v'+str(DENSversion)+'/')
@@ -59,7 +60,48 @@ for n in range(1,len(predictors)+1):
     all_scalers.append(scaler)
 del scaler
 
+# Calculate 'day in season'
+datetimes=[datetime.strptime(date, "%Y-%m-%d") for date in dates]
+months=[d.month for d in datetimes]
+years=[d.year for d in datetimes]
+day_in_season=[]
+for n in range(len(datetimes)):
+    if months[n] <9:
+        x=datetime.strptime(str(years[n]-1)+"-09-01", "%Y-%m-%d")
+    else:
+        x=datetime.strptime(str(years[n])+"-09-01", "%Y-%m-%d")
+    y=datetimes[n]-x
+    y=y.total_seconds()/86400
+    day_in_season.append(y)
+
+# Import bare earth and get min and max elev
+[R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
+nans=np.where(BE<0)
+BE[nans]=np.nan
+BE=BE.astype('float64')
+del nans
+min_elev=np.nanmin(BE)
+min_elev=np.floor(min_elev).astype(int)
+max_elev=np.nanmax(BE)
+max_elev=np.ceil(max_elev).astype(int)
+elevs = np.arange(start=min_elev, stop=max_elev+1, step=1) 
+
 for n in range(len(phases)):
+    # Create a raster for the Xt_model predictor by survey date
+    dt_Xt=pd.read_csv(str(drive)+':/LiDAR_data_processing/Weather_station_data/'+str(watershed)+'/Xt_daily_elevation.csv')
+    date=dates[n]
+    dt=dt_Xt[dt_Xt['date']==date]
+    dt = pd.melt(dt,id_vars=['date'],var_name='elev',value_name='Xt')
+    dt=dt[(dt['elev'].astype(int)>=min_elev)&(dt['elev'].astype(int)<=max_elev)]
+    Xt=np.array(dt['Xt'])
+    elev_data=np.around(BE,0)
+
+    Xt_all=np.full(elev_data.shape, np.nan)
+    for m in range(len(elevs)):
+        elev = elevs[m]
+        xt_val = Xt[m]
+        Xt_all[elev_data == elev] = xt_val
+
     # Import predictor data
     input=[]
     for m in predictors:
@@ -85,8 +127,7 @@ for n in range(len(phases)):
             [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_Northness_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
             input.append(x)
         elif m == "Xt_model":
-            [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution2)+'m/Distributed_Xt_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'.tif', bands='all'))
-            input.append(x)
+            input.append(Xt_all)
         elif m == "canopy_cover_lidar":
             [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_CC_v'+str(CANversion)+'_'+str(resolution2)+'m.tif', bands='all'))
             input.append(x)
@@ -94,7 +135,7 @@ for n in range(len(phases)):
             [R,x]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_CH_v'+str(CANversion)+'_'+str(resolution2)+'m.tif', bands='all'))
             input.append(x)
         elif m == "day_in_season":
-            x=np.full((rows,cols),days_in_season[n])
+            x=np.full((rows,cols),day_in_season[n])
             input.append(x)
     for m in range(len(input)):
         x=input[m]
@@ -104,9 +145,11 @@ for n in range(len(phases)):
         input[m]=x
     del x,m
 
-    # We're using the snow depth map later so saving it here seperately
-    index = predictors.index('snow_depth_m')
-    SD=input[index]
+    # We're using the snow depth and Xt maps later so saving it here seperately
+    index1 = predictors.index('snow_depth_m')
+    SD=input[index1]
+    index2 = predictors.index('Xt_model')
+    Xt_model=input[index2]
 
     # Import snow free areas. A raster mask is used if available, otherwise an elevation threshold.
     file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SFA.tif')
@@ -178,7 +221,6 @@ for n in range(len(phases)):
 
     # reshape into 2-dimensional arrays
     Simulated_density=np.reshape(Simulated_density,(rows,cols))
-    del rows,cols
 
     # Remove lakes
     [R,lakemask]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_lakes_'+str(resolution2)+'m.tif', bands='all'))
@@ -191,7 +233,7 @@ for n in range(len(phases)):
 
     if lakemodel == 'Y':
         # Read lakes vector dataset and create 100m buffer
-        lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/vector/'+str(watershed)+'_lakes/')
+        lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution2)+'m/vector/'+str(extent)+'_lakes/')
         lakes['buffered'] = lakes.buffer(distance=100)
 
         # Load Density raster
@@ -253,6 +295,11 @@ for n in range(len(phases)):
         pyrsgis.raster.export(SD_out, R, filename=str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SnowDensity_lakemodel'+str(lakemodel)+'_'+str(resolution2)+'m.tif')
     del SFA,input,SD,Simulated_density
     print('Phase '+str(n+1)+'/'+str(len(phases))+' complete')
+
+    # Export spatially-distributed Xt
+    os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Density_modelling/'+str(watershed)+'/Meteorological_parameter_modelling/'+str(year)+'/Output/resolution_'+str(resolution2)+'m/')
+    Xt_model=np.reshape(Xt_model,(rows,cols))
+    pyrsgis.raster.export(Xt_model, R, filename='Distributed_Xt_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'.tif')
 
 # Save processing variables
 var.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Metadata/'+str(extent)+'_'+str(year)+'_processing_variables_'+str(date)+'.csv', index = False)

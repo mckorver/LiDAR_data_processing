@@ -13,7 +13,7 @@ import rasterio
 import rasterio.fill
 
 # Import processing variables
-var = pd.read_csv('V:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -163,13 +163,13 @@ for n in range(len(phases)):
 
 # region # EXTENT AND CLIPPING ---------------------------------------------------------------
 # set projection and nodata value of output
-projection="EPSG:32610 - WGS 84 / UTM zone 10N"
+projection="EPSG:32609 - WGS 84 / UTM zone 9N"
 nodata = -9999
-phase = 'D1'
-filename = 'ENG_SS_260416_V2_1m_clip.tif'
+phase = 'P3'
+filename = '25_3010_03_TsitikaWS_DEM_1m_NGF_WGS84_UTM09_Ellips_FullExtent.tif'
 
 # Get the desired extent. You need a shapefile (polygon) of the area for this.
-WS = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution1)+'m/vector/'+str(extent)+'_extent.shp')
+WS = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Processing_areas/resolution_'+str(resolution1)+'m/vector/'+str(extent)+'_extent.shp')
 ext = WS.bounds
 bounds = (ext['minx'][0].round(0), ext['miny'][0].round(0), ext['maxx'][0].round(0), ext['maxy'][0].round(0))
 rows=ext['maxy'][0].round(0) - ext['miny'][0].round(0)
@@ -181,7 +181,7 @@ fn_in = filename
 fn_out = str(extent)+'_'+str(year)+'_'+str(phase)+'_SS.tif'
 gdal.Warp(fn_out, fn_in, outputBounds=bounds, width=cols, height=rows, dstSRS=projection, dstNodata=nodata)
 
-# Clip input data (from Watershed) to extent of the subbasin area
+# Clip watershed masks to extent of the desired area
 # Watershed masks
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution1)+'m/')
 inputs = ['_','_no_lakes_','_no_glaciers_','_no_lakes_no_glaciers_']
@@ -223,7 +223,7 @@ gdal.Warp(fn_out, fn_in, outputBounds=bounds, width=cols, height=rows, dstSRS=pr
 # Snow-free elevation masks
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution1)+'m/')
 for n in range(len(phases)):
-    fn_in = str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SFA.tif'
+    fn_in = str(watershed)+'_'+str(year)+'_'+str(phases[n])+'_SFA.tif'
     fn_out = str(extent)+'_'+str(year)+'_'+str(phases[n])+'_SFA.tif'
     gdal.Warp(fn_out, fn_in, outputBounds=bounds, width=cols, height=rows, dstSRS=projection, dstNodata=nodata)
 
@@ -239,13 +239,13 @@ for m in range(len(inputs)):
 
 # region # gapfill small areas with linear interpolation (used for Canopy processing) ----------------------------------------------------------
 # Import watershed mask
-[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Manual_corrections/'+str(extent)+'_Canopy_manual_corrections2.tif'))
+[R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Processing_areas/resolution_'+str(resolution1)+'m/'+str(watershed)+'_canopy_processing.tif'))
 nans=np.where(WS<1)
 WS[nans]=np.nan
 
 input=[]
 os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m')
-CanopyFiles=[str(watershed)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',str(watershed)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',str(watershed)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m.tif']
+CanopyFiles=[str(extent)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',str(extent)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m.tif',str(extent)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m.tif']
 for n in range(len(CanopyFiles)):
     [R,x]=np.array(pyrsgis.raster.read(CanopyFiles[n], bands='all'))
     nans=np.where(x<0)
@@ -281,33 +281,23 @@ lakes[nans]=np.nan
 
 for n in range(len(output)):
     x=output[n]
-    nulls=np.where(lakes==1)
-    x[nulls]=0
+    x_flat=np.ndarray.flatten(x)
+    lakes_flat=np.ndarray.flatten(lakes)
+    a=np.ndarray.flatten(np.array(np.where(area_mask_flattened==1))).astype('float64')
+    b=np.ndarray.flatten(np.array(np.where(lakes_flat==1))).astype('float64')
+    nulls=(np.intersect1d(a,b))
+    nulls=nulls.astype('int64')
+    x_flat[nulls]=0
+    x=np.reshape(x_flat,(dims[0],dims[1]))
     output[n]=x
 
 # Output ---------------------------------------------------------------------------------------
 os.chdir(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/Canopy/v'+str(CANversion)+'/resolution_'+str(resolution1)+'m')
-CanopyFiles2=[str(watershed)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m_filled.tif',str(watershed)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m_filled.tif',str(watershed)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m_filled.tif']
+CanopyFiles2=[str(extent)+'_CC_v'+str(CANversion)+'_'+str(resolution1)+'m_filled.tif',str(extent)+'_CD_v'+str(CANversion)+'_'+str(resolution1)+'m_filled.tif',str(extent)+'_CH_v'+str(CANversion)+'_'+str(resolution1)+'m_filled.tif']
 pyrsgis.export(output[0],R,filename=CanopyFiles2[0])
 pyrsgis.export(output[1],R,filename=CanopyFiles2[1])
 pyrsgis.export(output[2],R,filename=CanopyFiles2[2])
 # endregion
-
-## MERGE field data with field coordinates
-os.chdir(str(drive)+':/LiDAR_data_processing/Field_data/'+str(watershed)+'/'+str(year))
-merged=[]
-for n in phases:
-    gnss=pd.read_csv('GNSS_EGM_P1_unfixed_wo.csv')
-    field=pd.read_csv('Field_data_'+str(watershed)+'_'+str(year)+'_'+str(n)+'.csv', encoding_errors='ignore')
-    field1=field[(field['plot_type']=='Cardinal 10 m')&(field['cardinal']=='Centre')]
-    field2=field[(field['plot_type']=='Cardinal 10 m')&(field['cardinal']!='Centre')]
-    new=pd.merge(field1,gnss, on='plot_id',how='left')
-    field2['northing_m']=np.nan
-    field2['easting_m']=np.nan
-    mer=pd.concat([new,field2],ignore_index=True)
-    merged.append(mer)
-for n in range(len(phases)):
-    merged[n].to_csv('Field_data_'+str(watershed)+'_'+str(year)+'_P'+str(n+1)+'_merged.csv',index=False)
 
 ## Merge a bare earth file with a Glacier DEM (applies to Cruickshank)
 # Import bare earth

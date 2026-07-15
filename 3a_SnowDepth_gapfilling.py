@@ -18,7 +18,7 @@ from pathlib import Path
 
 # Import input data -----------------------------------------------------------
 # Import processing variables
-var = pd.read_csv('V:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
+var = pd.read_csv('K:/LiDAR_data_processing/Processing_variables.csv', dtype={'year':str, 'resolution1':str, 'resolution2':str,'BEversion':str, 'CANversion':str, 'date':str})
 watershed = var['watershed'][0]
 extent = var['extent'][0]
 year = var['year'][0]
@@ -41,13 +41,8 @@ nans=np.where(BE<0)
 BE[nans]=np.nan
 del nans
 
-# Import extent mask without lakes.
-[R,WS_gaps]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_no_lakes_'+str(resolution1)+'m.tif'))
-nans=np.where(WS_gaps<=0)
-WS_gaps[nans]=np.nan
-
 # Read lakes vector dataset and create 100m buffer
-lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/vector/'+str(watershed)+'_lakes/')
+lakes = geopandas.read_file(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Lakes_and_glaciers_mask/resolution_'+str(resolution1)+'m/vector/'+str(extent)+'_lakes/')
 lakes['buffered'] = lakes.buffer(distance=100)
 
 for n in range(len(phases)):
@@ -108,7 +103,7 @@ for n in range(len(phases)):
         i=np.where(mask==1)
         SD_out[i]= np.nan
 
-    # Determine areas where interpolation is required (i.e. within the boundary of the watershed, not in lakes or glaciers) and set these areas to 0 and everything else to 1
+    # Determine areas where interpolation is required and set these areas to 0 and everything else to 1
     SD_flattened=np.ndarray.flatten(SD_out)
     interpolation_areas=(SD_flattened/SD_flattened).astype('float64')
     b=np.ndarray.flatten(np.argwhere(np.isnan(SD_flattened))).astype('int64')
@@ -133,8 +128,10 @@ for n in range(len(phases)):
     if os.path.exists(qual_file):
         [R, qual_area] = np.array(pyrsgis.raster.read(qual_file))
         clipped[qual_area <= 0] = np.nan
-    [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_'+str(resolution1)+'m.tif'))
-    clipped[WS <= 0] = np.nan
+    WS_file = (str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_'+str(resolution1)+'m.tif')
+    if os.path.exists(WS_file):
+        [R,WS]=np.array(pyrsgis.raster.read(WS_file))
+        clipped[WS <= 0] = np.nan
     
     # Output ---------------------------------------------------------------------------------------
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m')
