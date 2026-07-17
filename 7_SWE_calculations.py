@@ -108,9 +108,9 @@ for a in range(len(subbasin)):
     for n in range(len(phases)):
         # Clip SnowDepth, SnowDensity, SWE map by subbasin:
         if lakemodel == 'Y':
-            [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_'+str(resolution2)+'m.tif'))
+            [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(subbasin[a])+'_watershed_'+str(resolution2)+'m.tif'))
         else:
-            [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[a])+'_watershed_no_lakes_'+str(resolution2)+'m.tif'))
+            [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(subbasin[a])+'_watershed_no_lakes_'+str(resolution2)+'m.tif'))
         nans=np.where(WS<1)
         WS[nans]=np.nan
         x=SWE[n]*WS

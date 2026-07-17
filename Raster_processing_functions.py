@@ -130,25 +130,24 @@ subprocess.run([x for x in cmd.split(" ") if x != ""])
 # Downsample Watershed Mask to 2 m
 lakes = '_no_lakes'
 glaciers = ''
-y = 0
 for m in range(len(subbasin)):
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution1)+'m/')
-    cmd='gdalwarp -overwrite -tr 2.0 2.0 -r near -dstnodata "-9999" -of GTiff '+str(subbasin[y])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution1)+'m.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution2)+'m/'+str(subbasin[y])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution2)+'m.tif'
+    cmd='gdalwarp -overwrite -tr 2.0 2.0 -r near -dstnodata "-9999" -of GTiff '+str(extent)+'_'+str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution1)+'m.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution2)+'m.tif'
     subprocess.run([x for x in cmd.split(" ") if x != ""])
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution2)+'m/')
-    [R,y]=np.array(pyrsgis.raster.read(str(subbasin[y])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution2)+'m.tif', bands='all'))
-    pyrsgis.raster.export(y, R, filename=str(subbasin[y])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution2)+'m.tif')
+    [R,y]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution2)+'m.tif', bands='all'))
+    pyrsgis.raster.export(y, R, filename=str(extent)+'_'+str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution2)+'m.tif')
 
 # Downsample Watershed Mask to 10 m
 lakes = '_no_lakes'
 glaciers = ''
 for m in range(len(subbasin)):
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution1)+'m/')
-    cmd='gdalwarp -overwrite -tr 10.0 10.0 -r near -dstnodata "-9999" -of GTiff '+str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution1)+'m.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution3)+'m/'+str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution3)+'m.tif'
+    cmd='gdalwarp -overwrite -tr 10.0 10.0 -r near -dstnodata "-9999" -of GTiff '+str(extent)+'_'+str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution1)+'m.tif '+str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution3)+'m/'+str(extent)+'_'+str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution3)+'m.tif'
     subprocess.run([x for x in cmd.split(" ") if x != ""])
     os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Watershed_mask/resolution_'+str(resolution3)+'m/')
-    [R,y]=np.array(pyrsgis.raster.read(str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution3)+'m.tif', bands='all'))
-    pyrsgis.raster.export(y, R, filename=str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution3)+'m.tif')
+    [R,y]=np.array(pyrsgis.raster.read(str(extent)+'_'+str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution3)+'m.tif', bands='all'))
+    pyrsgis.raster.export(y, R, filename=str(extent)+'_'+str(subbasin[m])+'_watershed'+str(lakes)+str(glaciers)+'_'+str(resolution3)+'m.tif')
 
 
 # Downsample SFA to 2 m
