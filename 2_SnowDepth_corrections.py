@@ -143,6 +143,7 @@ for n in range(len(phases)):
     # Exclude areas where avalanches are likely to occur
     avalanche_corrected_mask=np.copy(expanded_mask)
     avalanche_corrected_mask[avalanche_elevs[n]]=0
+    #avalanche_corrected_mask[notupsey]=0
     del expanded_mask
     
     # Remove misclassified areas from original snow depth DEMs
