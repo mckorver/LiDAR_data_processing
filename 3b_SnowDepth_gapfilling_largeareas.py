@@ -269,7 +269,7 @@ for n in range(len(phases)):
 # Output ------------------------------------------------------------------------------------------
 [R,WS]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution1)+'m/'+str(extent)+'_watershed_'+str(resolution1)+'m.tif'))
 os.chdir(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Provisional/resolution_'+str(resolution1)+'m')
-pyrsgis.raster.export(Depth_filled[1], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[4])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif')
+# pyrsgis.raster.export(Depth_filled[1], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[4])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m.tif')
 
 for n in range(len(phases)):
     pyrsgis.raster.export(Depth_filled[n], R, filename='Provisional_SD_'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_capped_clipped_vegcorrected_filled_modelled_lakemodel'+str(lakemodel)+'_'+str(resolution1)+'m_full.tif')
