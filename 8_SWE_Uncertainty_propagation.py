@@ -45,12 +45,12 @@ rand_model_error = var2['rand_error'][0]*1000
 # Import quality or watershed mask (with or without lakes)
 WS=[]
 for n in range(len(phases)):
-    qual_file = (str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Manual_corrections/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_quality_area.tif')
-    if os.path.exists(qual_file):
-        [R, x] = np.array(pyrsgis.raster.read(qual_file))
     WS_file = (str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/watershed_mask/resolution_'+str(resolution2)+'m/'+str(extent)+'_watershed_'+str(resolution2)+'m.tif')
     if os.path.exists(WS_file):
         [R,x]=np.array(pyrsgis.raster.read(WS_file))
+    qual_file = (str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Manual_corrections/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phases[n])+'_quality_area.tif')
+    if os.path.exists(qual_file):
+        [R,x]= np.array(pyrsgis.raster.read(qual_file))
     nans=np.where(x<1)
     x[nans]=np.nan
     WS.append(x)
@@ -83,23 +83,28 @@ del x,n
 # Import bare earth and clip to WS
 [R,BE]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/Bare_earth/'+str(watershed)+'/DEM/v'+str(BEversion)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_BE_v'+str(BEversion)+'_'+str(resolution2)+'m.tif', bands='all'))
 BE[BE<0]=np.nan
-BE=BE*WS[n]
+#BE=BE*WS[n]
 
 # Import snow free areas. A raster mask is used if available, otherwise an elevation threshold.
 SFAs=[]
-for n in phases:
-    file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(n)+'_SFA.tif')
+for n in range(len(phases)):
+    phase = phases[n]
+    file=Path(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(phase)+'_SFA.tif')
     if file.is_file():
         [R,SFA]=np.array(pyrsgis.raster.read(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/'+str(year)+'/resolution_'+str(resolution2)+'m/'+str(extent)+'_'+str(year)+'_'+str(n)+'_SFA.tif', bands='all'))
     else:
         x=pd.read_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Snow_depth_processing/'+str(watershed)+'/Snow_free_elevation_masks/SFETs_'+str(extent)+'_'+str(year)+'.csv')
-        SFET=x[x['Survey']==n]
-        SFET=SFET['SFETs'].iloc[0]
-        SFA=BE/BE
-        i=np.where(BE<SFET)
-        j=np.where(BE>=SFET)
-        SFA[i]=1
-        SFA[j]=0
+#        SFET=x[x['Survey']==n]
+#        SFET=SFET['SFETs'].iloc[0]
+        SFET = x.loc[x["Survey"] == phase, "SFETs"].iloc[0]
+        BE_masked = BE * WS[n]
+        SFA=BE_masked/BE_masked
+        SFA[BE_masked < SFET] = 1
+        SFA[BE_masked >= SFET] = 0
+        # i=np.where(BE_masked<SFET)
+        # j=np.where(BE_masked>=SFET)
+        # SFA[i]=1
+        # SFA[j]=0
     SFAs.append(SFA)
 
 # Calculations -----------------------------------------------------------------------------        

@@ -61,7 +61,9 @@ for n in range(1,len(predictors)+1):
 del scaler
 
 # Calculate 'day in season'
-datetimes=[datetime.strptime(date, "%Y-%m-%d") for date in dates]
+#datetimes=[datetime.strptime(date, "%Y-%m-%d") for date in dates]
+datetimes = pd.to_datetime(dates).tolist()
+
 months=[d.month for d in datetimes]
 years=[d.year for d in datetimes]
 day_in_season=[]
@@ -86,11 +88,15 @@ max_elev=np.nanmax(BE)
 max_elev=np.ceil(max_elev).astype(int)
 elevs = np.arange(start=min_elev, stop=max_elev+1, step=1) 
 
+dt_Xt = pd.read_csv(f"{drive}:/LiDAR_data_processing/Weather_station_data/{watershed}/Xt_daily_elevation.csv")
+dt_Xt["date"] = pd.to_datetime(dt_Xt["date"])
 for n in range(len(phases)):
     # Create a raster for the Xt_model predictor by survey date
-    dt_Xt=pd.read_csv(str(drive)+':/LiDAR_data_processing/Weather_station_data/'+str(watershed)+'/Xt_daily_elevation.csv')
-    date=dates[n]
-    dt=dt_Xt[dt_Xt['date']==date]
+    survey_date = pd.to_datetime(dates[n])
+    dt = dt_Xt[dt_Xt["date"] == survey_date]
+#    dt_Xt=pd.read_csv(str(drive)+':/LiDAR_data_processing/Weather_station_data/'+str(watershed)+'/Xt_daily_elevation.csv')
+#    date=dates[n]
+#    dt=dt_Xt[dt_Xt['date']==date]
     dt = pd.melt(dt,id_vars=['date'],var_name='elev',value_name='Xt')
     dt=dt[(dt['elev'].astype(int)>=min_elev)&(dt['elev'].astype(int)<=max_elev)]
     Xt=np.array(dt['Xt'])

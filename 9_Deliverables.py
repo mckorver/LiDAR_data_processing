@@ -29,6 +29,7 @@ def append_fun(a,b):
             a.append(y)
 append_fun(phases,'phases')
 append_fun(subbasin,'subbasin')
+subbasin = list(pd.unique(subbasin))
 
 # Create new folder named as the 'date' variable
 path = str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)
@@ -83,9 +84,7 @@ for a in range(len(subbasin)):
     merged['Percentage_total_SWV_errors'] = merged['Percentage_total_SWV_errors'].round(2)
     df1=df1.append(merged)
 df1 = df1.reset_index()
-cols = df1.columns.tolist()
-cols = cols[-1:] + cols[:-1]
-cols = cols[-1:] + cols[:-1]
+cols = ["watershed","year","Survey","Mean_snow_depth_m","Mean_snow_depth_aboveSL_m","Total_snow_m3","Mean_snow_density_kgm3","Mean_SWE_mm","Absolute_mean_SWE_error","Total_SWV_m3","Absolute_total_SWV_errors_m3","Percentage_total_SWV_errors"]
 sum_table = df1[cols]
 sum_table.to_csv(str(drive)+':/LiDAR_data_processing/'+str(lidar)+'/Final_products/'+str(watershed)+'/'+str(year)+'/Figures_tables/'+str(date)+'/Summary_table_'+str(extent)+'_'+str(year)+'_lakemodel'+str(lakemodel)+'.csv',index=False)
 del df1,cols
