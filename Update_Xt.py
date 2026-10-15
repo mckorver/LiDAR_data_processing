@@ -106,18 +106,17 @@ for n in range(len(elevs)):
     snowfall=np.multiply(snow_vs_rain,precip)
     Snow_array.append(snowfall)
 
-Tair=Wx[['date']]
-Snow=Wx[['date']]
+Tair=Wx[['date']].copy()
+Snow=Wx[['date']].copy()
 for n in range(len(elevs)):
     Tair[str(elevs[n])]=Tair_array[n]
     Snow[str(elevs[n])]=Snow_array[n]
 
 # Find mean daily Air Temps (set negative mean Air Temps to 0) and total daily snowfall for each elevation band
 numeric_cols = Tair.select_dtypes(include='number').columns
-#Tair[numeric_cols] = Tair[numeric_cols].mask(Tair[numeric_cols] < 0, 0) # Option 1: Set to 0 BEFORE averaging
 AirT_daily=Tair.groupby('date',as_index=False).mean()
 x = AirT_daily.loc[:,AirT_daily.columns != 'date']
-x[x<0]=0 # Option 2: Set to 0 after averaging
+x[x<0]=0
 x.insert(0,'date',AirT_daily['date'])
 AirT_daily=x
 AirT_daily['date']=pd.to_datetime(AirT_daily['date'])
@@ -142,11 +141,6 @@ for n in range(len(dates)):
         PDD_rev[str(m)]=PDD_ex.loc[::-1,str(m)].cumsum()[::-1] # Calculate reverse cumulative PDD from daily Air Temp for each elevation band  
     Snowfall_ex=Snowfall_daily[Snowfall_daily['date'].between(date_start, date_end)].copy() # Extract daily snowfall data between preceding Sep 1st and field date
     Snowfall_ex=Snowfall_ex.drop('date',axis='columns')
-    # Option 1: sum BEFORE dividing
-    #a1=PDD_rev.sum(numeric_only=True).to_frame().T
-    #a2=Snowfall_ex.sum(numeric_only=True).to_frame().T
-    #b1=a2.div(a1).replace(np.inf, np.nan).fillna(0) # snowfall / reverse cumulative PDD
-    # Option 2: sum AFTER dividing
     a=Snowfall_ex.div(PDD_rev).replace(np.inf, np.nan).fillna(0) # snowfall / reverse cumulative PDD
     b1=a.sum(numeric_only=True).to_frame().T # Sum of (snowfall / reverse cumulative PDD)
     b2=b1.div(b1).replace(np.inf, np.nan).fillna(0) # create dataframe of ones
@@ -174,25 +168,6 @@ if file.is_file():
     AirT_daily.to_csv('AirTemp_daily_elevation.csv',index=False)
     Snowfall_daily.to_csv('Snowfall_daily_elevation.csv',index=False)
 else:
-    Xt.to_csv('Xt_daily_elevation_Maartjemethod.csv',index=False)
-    AirT_daily.to_csv('AirTemp_daily_elevation_Maartjemethod.csv',index=False)
-    Snowfall_daily.to_csv('Snowfall_daily_elevation_Maartjemethod.csv',index=False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    Xt.to_csv('Xt_daily_elevation.csv',index=False)
+    AirT_daily.to_csv('AirTemp_daily_elevation.csv',index=False)
+    Snowfall_daily.to_csv('Snowfall_daily_elevation.csv',index=False)
